@@ -54,3 +54,14 @@
 
 - name: Refresh inventory to ensure new instances are included
   meta: refresh_inventory
+
+- name: Add new instances to falcon_agents group
+  add_host:
+    name: "{{ item.instances.0.public_ip_address }}"
+    groups: falcon_agents
+    ansible_user: ec2-user  # Specify the appropriate user for your EC2 instances
+  loop: "{{ newly_created_instances.results }}"
+  when: 
+    - newly_created_instances.changed
+    - not ansible_check_mode
+  tags: falcon
