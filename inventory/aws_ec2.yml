@@ -1,0 +1,26 @@
+---
+# Dynamic Inventory file to group EC2 instances based on tags
+plugin: amazon.aws.aws_ec2
+
+aws_profile: sandbox
+
+regions:
+  - ap-south-1
+
+# show host names in the order when executing a playbook
+hostnames:
+ - tag:Name
+
+filters:
+  instance-state-name: [pending,running]
+
+# use public ip address to connect to instances
+compose:
+  ansible_host: public_ip_address 
+
+# group instances based on tags 
+keyed_groups:
+  - prefix: tag 
+    key: tags
+
+# can be validated by: ansible-inventory -i aws_ec2.yml --graph
