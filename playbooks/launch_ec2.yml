@@ -6,3 +6,10 @@
   roles:
     - role: roles/launch_ec2
   tags: provisioning
+
+- name: Install Falcon agents
+  hosts: falcon_agents
+  gather_facts: true
+  roles:
+    - role: roles/setup_falcon
+  tags: falcon

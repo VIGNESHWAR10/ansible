@@ -27,7 +27,7 @@ Including an example of how to use your role (for instance, with variables passe
       roles:
          - setup_falcon
 
-Author Information
+Existing Playbook Execution:
 ------------------
-
-### Vigneshwar Mahendran ([contact](mailto:imvigneshwar10@gmail.com))
+  * To run playbook: 
+  `ansible-playbook playbooks/setup_falcon.yml`
