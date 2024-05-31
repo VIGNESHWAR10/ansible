@@ -1,0 +1,5 @@
+---
+# defaults file for setup_falcon
+
+falcon_agent_script_url: "https://cis-infosec-cdn.trimble.com/crowdstrike/trimble-cis-falcon-installer.sh"
+falcon_agent_script_location: "/tmp/install_falcon.sh"

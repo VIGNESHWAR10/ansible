@@ -1,0 +1,9 @@
+---
+# playbook to call launch_ec2 role
+- name: Setup Falcon Agents on all EC2 instances
+  hosts: aws_ec2
+  connection: local
+  gather_facts: true
+  roles:
+    - role: roles/setup_falcon
+  tags: falcon
