@@ -1,0 +1,6 @@
+- name: Install kubectl in kube-master-1
+  ansible.builtin.yum:
+    name: kubectl
+    state: present
+  become: true
+  when: "'tag_Name_kube_master_1' in group_names"

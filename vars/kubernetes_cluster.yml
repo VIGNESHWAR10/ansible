@@ -1,0 +1,89 @@
+---
+# vars file for launch_Kubernetes_cluster
+keypair: my-docker-practice-key
+instance_type: t2.micro
+image: ami-0cc9838aa7ab1dce7
+count: 1
+region: ap-south-1
+vpc_id: vpc-0b3591847763615ba
+
+instance_list:
+  - name: kube-master-1
+    subnet_id: "subnet-0f3a61901710ca80b" #PublicSubnet1
+    tags:
+      Name: kube-master-1
+      Role: master-node
+      Cluster: kubernetes
+  - name: kube-master-2
+    subnet_id: "subnet-0c36ce8777d049a8c" #PublicSubnet2
+    tags:
+      Name: kube-master-2
+      Role: master-node
+      Cluster: kubernetes
+  - name: kube-worker-1
+    subnet_id: "subnet-0f3a61901710ca80b" #PublicSubnet1
+    tags:
+      Name: kube-worker-1
+      Role: worker-node
+      Cluster: kubernetes
+  - name: kube-worker-2
+    subnet_id: "subnet-0c36ce8777d049a8c" #PublicSubnet2
+    tags:
+      Name: kube-worker-2
+      Role: worker-node
+      Cluster: kubernetes
+  - name: kube-loadbalancer
+    subnet_id: "subnet-0f3a61901710ca80b" #PublicSubnet1
+    tags:
+      Name: kube-loadbalancer
+      Role: loadbalancer
+      Cluster: kubernetes
+
+sg_group_name: kubernetes
+sg_group_description: "Kubernetes Cluster SG"
+sg_rules:
+  - proto: tcp
+    from_port: 22
+    to_port: 22
+    cidr_ip: 0.0.0.0/0
+  - proto: tcp
+    from_port: 30000
+    to_port: 32767
+    cidr_ip: 10.0.0.0/16
+  - proto: tcp
+    from_port: 80
+    to_port: 80
+    cidr_ip: 0.0.0.0/0
+  - proto: tcp
+    from_port: 443
+    to_port: 443
+    cidr_ip: 0.0.0.0/0
+  - proto: tcp
+    from_port: 2379
+    to_port: 2379
+    cidr_ip: 10.0.0.0/16
+  - proto: tcp
+    from_port: 2380
+    to_port: 2380
+    cidr_ip: 10.0.0.0/16
+  - proto: tcp
+    from_port: 6443
+    to_port: 6443
+    cidr_ip: 10.0.0.0/16
+  - proto: tcp
+    from_port: 6783
+    to_port: 6783
+    cidr_ip: 10.0.0.0/16
+  - proto: udp
+    from_port: 6783
+    to_port: 6783
+    cidr_ip: 10.0.0.0/16
+  - proto: tcp
+    from_port: 6784
+    to_port: 6784
+    cidr_ip: 10.0.0.0/16
+  - proto: tcp
+    from_port: 10250
+    to_port: 10250
+    cidr_ip: 10.0.0.0/16
+  

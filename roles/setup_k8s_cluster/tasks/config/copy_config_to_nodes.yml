@@ -1,0 +1,37 @@
+---
+# copy configs to nodes
+
+- name: Fetch the generated config from kube-master-1 and store it in local
+  ansible.builtin.fetch:
+    src: "{{ item.src }}"
+    dest: "{{ item.temp }}"
+    flat: yes
+  when: "'tag_Name_kube_master_1' in group_names"
+  become: true
+  loop: "{{ copy_to_nodes }}"
+
+- name: Copy the config to kube-master-2
+  ansible.builtin.copy:
+    src: "{{ item.temp }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+   - "'tag_Name_kube_master_2' in group_names"
+   - item.to_master
+  become: true
+  loop: "{{ copy_to_nodes }}"
+
+- name: Copy the config to worker-nodes
+  ansible.builtin.copy:
+    src: "{{ item.temp }}"
+    dest: "{{ item.dest }}"
+    owner: root
+    group: root
+    mode: '0600'
+  when:
+   - "'tag_Role_worker_node' in group_names"
+   - item.to_worker
+  become: true
+  loop: "{{ copy_to_nodes }}"

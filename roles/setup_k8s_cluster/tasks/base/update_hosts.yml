@@ -1,0 +1,68 @@
+# Update IP infor od the cluster nodes in /etc/hosts file of kube-master-1
+- name: Collect IP information
+  ansible.builtin.set_fact:
+    host_ips: "{{ groups['kubernetes'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | zip(groups['kubernetes']) | list }}"
+  run_once: true
+
+- name: Remove existing entries from /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '.*{{ item[1] }}$'
+    state: absent
+  loop: "{{ host_ips }}"
+  become: true
+
+- name: Add entries to /etc/hosts
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    line: "{{ item[0] }} {{ item[1] }}"
+    state: present
+  loop: "{{ host_ips }}"
+  become: true
+
+- name: Ensure directories that are needed exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  loop: "{{ conf_directories }}"
+  become: true
+
+- name: Place env_vars script
+  ansible.builtin.copy:
+    src: "files/env_vars.sh"
+    dest: "/etc/profile.d/env_vars.sh"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Place kubernetes.repo template
+  ansible.builtin.template:
+    src: "templates/kubernetes.repo.j2"
+    dest: "/etc/yum.repos.d/kubernetes.repo"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+
+- name: Add templates in master nodes
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  when: "'tag_Role_master_node' in group_names"
+  loop: "{{ templates }}"
+  become: true
+
+- name: fill templates with env vars in master nodes
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh && envsubst < "{{ item.dest }}" > /root/output
+    mv /root/output "{{ item.dest }}"
+  loop: "{{ templates }}"
+  when: "'tag_Role_master_node' in group_names"
+  become: true

@@ -1,0 +1,35 @@
+---
+
+- name: install ha-proxy
+  ansible.builtin.yum:
+    name: haproxy
+    state: present
+    update_cache: yes
+  become: true
+  when: "'tag_Role_loadbalancer' in group_names"
+
+- name: place haproxy config template
+  ansible.builtin.template:
+    src: "templates/haproxy.cfg.j2"
+    dest: "/etc/haproxy/haproxy.cfg"
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  when: "'tag_Role_loadbalancer' in group_names"
+
+- name: substitute env vars in config
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh && envsubst < /etc/haproxy/haproxy.cfg > /root/output
+    mv /root/output /etc/haproxy/haproxy.cfg
+  become: true
+  when: "'tag_Role_loadbalancer' in group_names"
+
+- name: enable and start haproxy
+  ansible.builtin.service:
+    name: haproxy
+    state: restarted
+    enabled: yes
+    daemon_reload: true
+  become: true
+  when: "'tag_Role_loadbalancer' in group_names"

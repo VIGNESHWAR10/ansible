@@ -1,0 +1,42 @@
+---
+# playbook to call launch_Kubernetes_cluster role
+- name: Launch Base EC2 instances
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars_files:
+    - ../vars/kubernetes_cluster.yml
+  roles:
+    - role: roles/launch_ec2
+  tags: [always]
+
+- name: Set Hostname on Newly Created Instances
+  hosts: new_instances
+  become: true
+  tasks:
+    - name: Set system hostname to the 'Name' tag value
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+# configure common hostgroup
+- name: Setup Kubernetes HostGroup
+  hosts: tag_Cluster_kubernetes
+  gather_facts: true
+  tasks:
+    - name: Create hostgroup
+      ansible.builtin.group_by:
+        key: kubernetes
+  tags: [always]
+
+- name: Install Falcon agent
+  hosts: kubernetes
+  gather_facts: false
+  roles:
+    - role: roles/setup_falcon
+  tags: [falcon]
+
+- name: Setup Kubernetes Cluster
+  hosts: kubernetes
+  gather_facts: false
+  roles:
+    - role: roles/setup_k8s_cluster

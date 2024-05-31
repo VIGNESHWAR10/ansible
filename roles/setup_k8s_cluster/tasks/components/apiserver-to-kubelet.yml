@@ -1,0 +1,12 @@
+- name: Copy (Role/Rolebinding) manifest to kube-master-1
+  ansible.builtin.copy:
+    src: apiserver-to-kubelet.yaml
+    dest: /tmp/apiserver-to-kubelet.yaml
+  become: true
+  when: "'tag_Name_kube_master_1' in group_names"
+
+- name: Create necessary role and rolebinding
+  ansible.builtin.shell: |
+    kubectl apply -f /tmp/apiserver-to-kubelet.yaml
+  become: true
+  when: "'tag_Name_kube_master_1' in group_names"

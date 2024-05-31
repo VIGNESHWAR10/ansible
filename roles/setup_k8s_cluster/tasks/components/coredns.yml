@@ -1,0 +1,5 @@
+- name: deploy coredns
+  ansible.builtin.shell: |
+    kubectl apply -f "https://raw.githubusercontent.com/mmumshad/kubernetes-the-hard-way/master/deployments/coredns.yaml"
+  become: true
+  when: "'tag_Name_kube_master_1' in group_names"

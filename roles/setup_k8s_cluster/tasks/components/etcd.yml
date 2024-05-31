@@ -1,0 +1,28 @@
+---
+- name: Download and install etcd and etcdctl
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh && wget -q \
+     "https://github.com/coreos/etcd/releases/download/{{ ETCD_VERSION }}/etcd-{{ ETCD_VERSION }}-linux-amd64.tar.gz" \
+     -O /tmp/etcd-{{ ETCD_VERSION }}-linux-amd64.tar.gz
+    
+    source /etc/profile.d/env_vars.sh && tar -xvf /tmp/etcd-{{ ETCD_VERSION }}-linux-amd64.tar.gz -C /tmp/
+
+    source /etc/profile.d/env_vars.sh && sudo mv /tmp/etcd-{{ ETCD_VERSION }}-linux-amd64/etcd* /usr/local/bin/
+  become: true
+  when: "'tag_Role_master_node' in group_names"
+
+- name: configure etcd
+  ansible.builtin.shell: |
+    if [ ! -L "/etc/etcd/ca.crt" ]; then
+      sudo ln -s /var/lib/kubernetes/pki/ca.crt /etc/etcd/ca.crt
+    fi
+
+    if [ ! -L "/etc/etcd/etcd-server.crt" ]; then
+      sudo ln -s /var/lib/kubernetes/pki/etcd-server.crt /etc/etcd/etcd-server.crt
+    fi
+
+    if [ ! -L "/etc/etcd/etcd-server.key" ]; then
+      sudo ln -s /var/lib/kubernetes/pki/etcd-server.key /etc/etcd/etcd-server.key
+    fi
+  become: true
+  when: "'tag_Role_master_node' in group_names"

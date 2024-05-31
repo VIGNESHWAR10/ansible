@@ -1,0 +1,5 @@
+- name: deploy weave network [kube-master-1]
+  ansible.builtin.shell: |
+    kubectl apply -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
+  become: true
+  when: "'tag_Name_kube_master_1' in group_names"

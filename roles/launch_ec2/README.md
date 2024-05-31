@@ -34,6 +34,6 @@ Including an example of how to use your role (for instance, with variables passe
 Existing Playbook Execution:
 ------------------
   * To run playbook: 
-  `ansible-playbook playbooks/launch_ec2.yml`
+  `ansible-playbook playbooks/launch_ec2.yml -e "base_role_execution=true"`
   * To run playbook but not to install falcon-agent:
   `ansible-playbook playbooks/launch_ec2.yml --skip-tags falcon`

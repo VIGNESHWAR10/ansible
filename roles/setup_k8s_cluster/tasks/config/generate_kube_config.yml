@@ -1,0 +1,21 @@
+# generate kubeconfig files for the kubelet and the admin user.
+---
+- name: Generate kubeconfig files in kube-master-1
+  ansible.builtin.shell: |
+   source /etc/profile.d/env_vars.sh
+
+   kubectl config set-cluster kubernetes --certificate-authority "{{ certificates[0].crt }}" \
+    --embed-certs=true --server="{{ item.server }}":6443 \
+    --kubeconfig="{{ item.kubeconfig }}"
+
+   kubectl config set-credentials "{{ item.user }}" \
+    --client-certificate="{{ item.crt }}" --client-key="{{ item.key }}" \
+    --embed-certs=true --kubeconfig="{{ item.kubeconfig }}"
+
+   kubectl config set-context default --cluster=kubernetes --user="{{ item.user }}" \
+    --kubeconfig="{{ item.kubeconfig }}"
+
+   kubectl config use-context default --kubeconfig="{{ item.kubeconfig }}"
+  loop: "{{ kube_config }}"
+  when: "'tag_Name_kube_master_1' in group_names"
+  become: true

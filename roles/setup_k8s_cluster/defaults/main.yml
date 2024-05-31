@@ -1,0 +1,367 @@
+---
+# defaults file for launch_k8s_cluster
+ssh_key_path: "/root/.ssh/id_rsa"
+
+KUBERNETES_VERSION: "v1.30.2"
+KUBE_VERSION: "v1.30"
+ETCD_VERSION: "v3.5.14"
+
+kubernetes_controller:
+  - name: kube-apiserver
+  - name: kube-controller-manager
+  - name: kube-scheduler
+
+conf_directories:
+  - /root/.ssh
+  - /var/lib/kubernetes/pki
+  - /var/lib/kubernetes/manifests
+  - /var/lib/kubernetes/ssl-conf
+  - /var/lib/kube-proxy
+  - /etc/etcd
+  - /var/lib/etcd
+
+worker_directories:
+  - /etc/containerd
+  - /var/lib/kubelet/pki
+  - /var/run/kubernetes
+
+worker_templates:
+  - src: templates/module-k8s.conf.j2
+    dest: /etc/modules-load.d/k8s.conf
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/sysctl-k8s.conf.j2
+    dest: /etc/sysctl.d/k8s.conf
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kubelet-config.yaml.j2
+    dest: /var/lib/kubelet/kubelet-config.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kubelet.service.j2
+    dest: /etc/systemd/system/kubelet.service
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kube-proxy-config.yaml.j2
+    dest: /var/lib/kube-proxy/kube-proxy-config.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kube-proxy.service.j2
+    dest: /etc/systemd/system/kube-proxy.service
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/bootstrap-kubeconfig.j2
+    dest: /var/lib/kubelet/bootstrap-kubeconfig
+    owner: root
+    group: root
+    mode: '0644'
+
+worker_packages:
+  - containerd 
+  - kubernetes-cni 
+  - kubectl 
+  - ipvsadm 
+  - ipset
+  - iptables
+
+templates:
+  - src: templates/encryption-config.yaml.j2
+    dest: /var/lib/kubernetes/manifests/encryption-config.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/openssl.cnf.j2
+    dest: /var/lib/kubernetes/ssl-conf/openssl.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/openssl-etcd.cnf.j2
+    dest: /var/lib/kubernetes/ssl-conf/openssl-etcd.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/openssl-kubelet.cnf.j2
+    dest: /var/lib/kubernetes/ssl-conf/openssl-kubelet.cnf
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/bootstrap-token-07401b.yaml.j2
+    dest: /var/lib/kubernetes/manifests/bootstrap-token-07401b.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/csrs-for-bootstrapping.yaml.j2
+    dest: /var/lib/kubernetes/manifests/csrs-for-bootstrapping.yaml
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/auto-approve-csrs-for-group.yaml.j2
+    dest: /var/lib/kubernetes/manifests/auto-approve-csrs-for-group.yaml
+    owner: root
+    group: root
+    mode: '0644'
+
+component_templates:
+  - src: templates/etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kube-apiserver.service.j2
+    dest: /etc/systemd/system/kube-apiserver.service
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kube-controller-manager.service.j2
+    dest: /etc/systemd/system/kube-controller-manager.service
+    owner: root
+    group: root
+    mode: '0644'
+  - src: templates/kube-scheduler.service.j2
+    dest: /etc/systemd/system/kube-scheduler.service
+    owner: root
+    group: root
+    mode: '0644'
+
+components:
+  - etcd
+  - kube-apiserver
+  - kube-controller-manager
+  - kube-scheduler
+ 
+certificates:
+  - name: ca
+    key: /var/lib/kubernetes/pki/ca.key
+    csr: /tmp/ca.csr
+    crt: /var/lib/kubernetes/pki/ca.crt
+    subject: "/CN=KUBERNETES-CA/O=Kubernetes"
+    temp_key_dest: /tmp/keys/ca.key
+    temp_crt_dest: /tmp/crt/ca.crt
+  - name: admin
+    key: /var/lib/kubernetes/pki/admin.key
+    csr: /tmp/admin.csr
+    crt: /var/lib/kubernetes/pki/admin.crt
+    subject: "/CN=admin/O=system:masters"
+    temp_key_dest: /tmp/keys/admin.key
+    temp_crt_dest: /tmp/crt/admin.crt
+  - name: apiserver-kubelet-client
+    key: /var/lib/kubernetes/pki/apiserver-kubelet-client.key
+    csr: /tmp/apiserver-kubelet-client.csr
+    crt: /var/lib/kubernetes/pki/apiserver-kubelet-client.crt
+    subject: "/CN=kube-apiserver-kubelet-client/O=system:masters"
+    ssl_conf: /var/lib/kubernetes/ssl-conf/openssl-kubelet.cnf
+    temp_key_dest: /tmp/keys/apiserver-kubelet-client.key
+    temp_crt_dest: /tmp/crt/apiserver-kubelet-client.crt
+  - name: etcd-server
+    key: /var/lib/kubernetes/pki/etcd-server.key
+    csr: /tmp/etcd-server.csr
+    crt: /var/lib/kubernetes/pki/etcd-server.crt
+    subject: "/CN=etcd-server/O=Kubernetes"
+    ssl_conf: /var/lib/kubernetes/ssl-conf/openssl-etcd.cnf
+    temp_key_dest: /tmp/keys/etcd-server.key
+    temp_crt_dest: /tmp/crt/etcd-server.crt  
+  - name: kube-apiserver
+    key: /var/lib/kubernetes/pki/kube-apiserver.key
+    csr: /tmp/kube-apiserver.csr 
+    crt: /var/lib/kubernetes/pki/kube-apiserver.crt
+    subject: "/CN=kube-apiserver/O=Kubernetes"
+    ssl_conf: /var/lib/kubernetes/ssl-conf/openssl.cnf
+    temp_key_dest: /tmp/keys/kube-apiserver.key
+    temp_crt_dest: /tmp/crt/kube-apiserver.crt
+  - name: kube-controller-manager
+    key: /var/lib/kubernetes/pki/kube-controller-manager.key
+    csr: /tmp/kube-controller-manager.csr
+    crt: /var/lib/kubernetes/pki/kube-controller-manager.crt
+    subject: "/CN=system:kube-controller-manager/O=system:kube-controller-manager"
+    temp_key_dest: /tmp/keys/kube-controller-manager.key
+    temp_crt_dest: /tmp/crt/kube-controller-manager.crt
+  - name: kube-proxy
+    key: /var/lib/kubernetes/pki/kube-proxy.key
+    csr: /tmp/kube-proxy.csr
+    crt: /var/lib/kubernetes/pki/kube-proxy.crt
+    subject: "/CN=system:kube-proxy/O=system:node-proxier"
+    temp_key_dest: /tmp/keys/kube-proxy.key
+    temp_crt_dest: /tmp/crt/kube-proxy.crt
+  - name: kube-scheduler
+    key: /var/lib/kubernetes/pki/kube-scheduler.key
+    csr: /tmp/kube-scheduler.csr
+    crt: /var/lib/kubernetes/pki/kube-scheduler.crt
+    subject: "/CN=system:kube-scheduler/O=system:kube-scheduler"
+    temp_key_dest: /tmp/keys/kube-scheduler.key
+    temp_crt_dest: /tmp/crt/kube-scheduler.crt
+  - name: service-account
+    key: /var/lib/kubernetes/pki/service-account.key
+    csr: /tmp/service-account.csr
+    crt: /var/lib/kubernetes/pki/service-account.crt
+    subject: "/CN=service-accounts/O=Kubernetes"
+    temp_key_dest: /tmp/keys/service-account.key
+    temp_crt_dest: /tmp/crt/service-account.crt
+
+worker_certificate_autorenew_manifests:
+  - /var/lib/kubernetes/manifests/bootstrap-token-07401b.yaml
+  - /var/lib/kubernetes/manifests/csrs-for-bootstrapping.yaml
+  - /var/lib/kubernetes/manifests/auto-approve-csrs-for-group.yaml
+
+kube_config:
+ - name: admin
+   user: admin
+   kubeconfig: /var/lib/kubernetes/admin.kubeconfig
+   key: /var/lib/kubernetes/pki/admin.key
+   crt: /var/lib/kubernetes/pki/admin.crt
+   server: https://127.0.0.1
+   local_download_path: /tmp/admin.kubeconfig
+ - name: kube-controller-manager
+   user: system:kube-controller-manager
+   kubeconfig: /var/lib/kubernetes/kube-controller-manager.kubeconfig
+   key: /var/lib/kubernetes/pki/kube-controller-manager.key
+   crt: /var/lib/kubernetes/pki/kube-controller-manager.crt
+   server: https://127.0.0.1
+   local_download_path: /tmp/kube-controller-manager.kubeconfig
+ - name: kube-proxy
+   user: system:kube-proxy
+   kubeconfig: /var/lib/kube-proxy/kube-proxy.kubeconfig
+   key: /var/lib/kubernetes/pki/kube-proxy.key
+   crt: /var/lib/kubernetes/pki/kube-proxy.crt
+   server: https://${LOADBALANCER}
+   local_download_path: /tmp/kube-proxy.kubeconfig
+ - name: kube-scheduler
+   user: system:kube-scheduler
+   kubeconfig: /var/lib/kubernetes/kube-scheduler.kubeconfig
+   key: /var/lib/kubernetes/pki/kube-scheduler.key
+   crt: /var/lib/kubernetes/pki/kube-scheduler.crt
+   server: https://127.0.0.1
+   local_download_path: /tmp/kube-scheduler.kubeconfig
+
+copy_to_nodes:
+  - name: admin.kubeconfig
+    src: /var/lib/kubernetes/admin.kubeconfig
+    temp: /tmp/admin.kubeconfig
+    dest: /var/lib/kubernetes/admin.kubeconfig
+    to_master: true
+    to_worker: false
+  - name: apiserver-kubelet-client.crt
+    src: /var/lib/kubernetes/pki/apiserver-kubelet-client.crt
+    temp: /tmp/apiserver-kubelet-client.crt
+    dest: /var/lib/kubernetes/pki/apiserver-kubelet-client.crt
+    to_master: true
+    to_worker: false
+  - name: apiserver-kubelet-client.key
+    src: /var/lib/kubernetes/pki/apiserver-kubelet-client.key
+    temp: /tmp/apiserver-kubelet-client.key
+    dest: /var/lib/kubernetes/pki/apiserver-kubelet-client.key
+    to_master: true
+    to_worker: false
+  - name: ca.crt
+    src: /var/lib/kubernetes/pki/ca.crt
+    temp: /tmp/ca.crt
+    dest: /var/lib/kubernetes/pki/ca.crt
+    to_master: true
+    to_worker: true
+  - name: ca.key
+    src: /var/lib/kubernetes/pki/ca.key
+    temp: /tmp/ca.key
+    dest: /var/lib/kubernetes/pki/ca.key
+    to_master: true
+    to_worker: false
+  - name: encryption-config.yaml
+    src: /var/lib/kubernetes/encryption-config.yaml
+    temp: /tmp/encryption-config.yaml
+    dest: /var/lib/kubernetes/encryption-config.yaml
+    to_master: true
+    to_worker: false
+  - name: etcd-server.crt
+    src: /var/lib/kubernetes/pki/etcd-server.crt
+    temp: /tmp/etcd-server.crt
+    dest: /var/lib/kubernetes/pki/etcd-server.crt
+    to_master: true
+    to_worker: false
+  - name: etcd-server.key
+    src: /var/lib/kubernetes/pki/etcd-server.key
+    temp: /tmp/etcd-server.key
+    dest: /var/lib/kubernetes/pki/etcd-server.key
+    to_master: true
+    to_worker: false
+  - name: kube-apiserver.crt
+    src: /var/lib/kubernetes/pki/kube-apiserver.crt
+    temp: /tmp/kube-apiserver.crt
+    dest: /var/lib/kubernetes/pki/kube-apiserver.crt
+    to_master: true
+    to_worker: false
+  - name: kube-apiserver.key
+    src: /var/lib/kubernetes/pki/kube-apiserver.key
+    temp: /tmp/kube-apiserver.key
+    dest: /var/lib/kubernetes/pki/kube-apiserver.key
+    to_master: true
+    to_worker: false
+  - name: kube-controller-manager.crt
+    src: /var/lib/kubernetes/pki/kube-controller-manager.crt
+    temp: /tmp/kube-controller-manager.crt
+    dest: /var/lib/kubernetes/pki/kube-controller-manager.crt
+    to_master: true
+    to_worker: false
+  - name: kube-controller-manager.key
+    src: /var/lib/kubernetes/pki/kube-controller-manager.key
+    temp: /tmp/kube-controller-manager.key
+    dest: /var/lib/kubernetes/pki/kube-controller-manager.key
+    to_master: true
+    to_worker: false
+  - name: kube-controller-manager.kubeconfig
+    src: /var/lib/kubernetes/kube-controller-manager.kubeconfig
+    temp: /tmp/kube-controller-manager.kubeconfig
+    dest: /var/lib/kubernetes/kube-controller-manager.kubeconfig
+    to_master: true
+    to_worker: false
+  - name: kube-proxy.crt
+    src: /var/lib/kubernetes/pki/kube-proxy.crt
+    temp: /tmp/kube-proxy.crt
+    dest: /var/lib/kubernetes/pki/kube-proxy.crt
+    to_master: false
+    to_worker: true
+  - name: kube-proxy.key
+    src: /var/lib/kubernetes/pki/kube-proxy.key
+    temp: /tmp/kube-proxy.key
+    dest: /var/lib/kubernetes/pki/kube-proxy.key
+    to_master: false
+    to_worker: true
+  - name: kube-proxy.kubeconfig
+    src: /var/lib/kube-proxy/kube-proxy.kubeconfig
+    temp: /tmp/kube-proxy.kubeconfig
+    dest: /var/lib/kube-proxy/kube-proxy.kubeconfig
+    to_master: false
+    to_worker: true
+  - name: kube-scheduler.crt
+    src: /var/lib/kubernetes/pki/kube-scheduler.crt
+    temp: /tmp/kube-scheduler.crt
+    dest: /var/lib/kubernetes/pki/kube-scheduler.crt
+    to_master: true
+    to_worker: false
+  - name: kube-scheduler.key
+    src: /var/lib/kubernetes/pki/kube-scheduler.key
+    temp: /tmp/kube-scheduler.key
+    dest: /var/lib/kubernetes/pki/kube-scheduler.key
+    to_master: true
+    to_worker: false
+  - name: kube-scheduler.kubeconfig
+    src: /var/lib/kubernetes/kube-scheduler.kubeconfig
+    temp: /tmp/kube-scheduler.kubeconfig
+    dest: /var/lib/kubernetes/kube-scheduler.kubeconfig
+    to_master: true
+    to_worker: false
+  - name: service-account.crt
+    src: /var/lib/kubernetes/pki/service-account.crt
+    temp: /tmp/service-account.crt
+    dest: /var/lib/kubernetes/pki/service-account.crt
+    to_master: true
+    to_worker: false
+  - name: service-account.key
+    src: /var/lib/kubernetes/pki/service-account.key
+    temp: /tmp/service-account.key
+    dest: /var/lib/kubernetes/pki/service-account.key
+    to_master: true
+    to_worker: false
