@@ -1,0 +1,56 @@
+---
+- name: Create SG if not exists
+  amazon.aws.ec2_security_group:
+    name: "{{ sg_group_name }}"
+    description: "{{ sg_group_description }}"
+    vpc_id: "{{ vpc_id }}"
+    region: "{{ region }}"
+    rules: "{{ sg_rules }}"
+  register: ec2_sg
+  ignore_errors: true
+
+- name: Gather EC2 facts
+  vars:
+    ec2_tags_filter:
+      "tag:Name": "{{ item.tags.Name }}"
+      "instance-state-name": ["running", "pending"]
+  amazon.aws.ec2_instance_info:
+    region: "{{ region }}"
+    filters: "{{ ec2_tags_filter }}"
+  with_items: "{{ instance_list }}"
+  register: existing_instances
+
+- name: Start EC2 instances if not created already
+  vars:  # combine instance_list and existing_instances.results into a list of tuples
+    merged_instances: "{{ instance_list | zip(existing_instances.results) | list }}"
+  amazon.aws.ec2_instance:
+    name: "{{ item.0.name }}"
+    region: "{{ region }}"
+    key_name: "{{ keypair }}"
+    vpc_subnet_id: "{{ item.0.subnet_id }}"
+    instance_type: "{{ instance_type }}"
+    security_groups: "{{ ec2_sg.group_id }}"
+    count: "{{ count }}"
+    tags: "{{ item.0.tags }}"
+    network:
+      assign_public_ip: true
+    image_id: "{{ image }}"
+  when: item.1.instances | length == 0
+  loop: "{{ merged_instances }}"
+  register: newly_created_instances
+  ignore_errors: true
+
+- name: Wait for new instances SSH to be ready
+  ansible.builtin.wait_for:
+    timeout: 60
+    host: "{{ item.instances.0.public_ip_address }}"
+    port: 22
+    delay: 40  # Wait 40 seconds before starting the check
+  loop: "{{ newly_created_instances.results }}"
+  when: 
+   - newly_created_instances.changed # only run when new instances are created
+   - item.changed == true
+   - not ansible_check_mode
+
+- name: Refresh inventory to ensure new instances are included
+  meta: refresh_inventory

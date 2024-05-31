@@ -1,0 +1,29 @@
+---
+keypair: my-docker-practice-key
+instance_type: t2.micro
+image: ami-0cc9838aa7ab1dce7
+count: 1
+region: ap-south-1
+vpc_id: vpc-0b3591847763615ba
+
+instance_list:
+  - name: sample_instance
+    subnet_id: "subnet-0f3a61901710ca80b" #PublicSubnet1
+    tags:
+      Name: sample_instance
+
+sg_group_name: sample
+sg_group_description: "Sample SG"
+sg_rules:
+  - proto: tcp
+    from_port: 80
+    to_port: 80
+    cidr_ip: 0.0.0.0/0
+  - proto: tcp
+    from_port: 443
+    to_port: 443
+    cidr_ip: 0.0.0.0/0
+  - proto: tcp
+    from_port: 22
+    to_port: 22
+    cidr_ip: 0.0.0.0/0
