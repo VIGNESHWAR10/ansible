@@ -31,7 +31,7 @@ Including an example of how to use your role (for instance, with variables passe
          - launch_ec2
 
 
-Playbook Execution:
+Existing Playbook Execution:
 ------------------
   * To run playbook: 
   `ansible-playbook playbooks/launch_ec2.yml`

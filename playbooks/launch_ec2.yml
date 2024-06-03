@@ -7,8 +7,16 @@
     - role: roles/launch_ec2
   tags: provisioning
 
-- name: Install Falcon agents
-  hosts: falcon_agents
+- name: Set Hostname on Newly Created Instances
+  hosts: new_instances
+  become: true
+  tasks:
+    - name: Set system hostname to the 'Name' tag value
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+- name: Install Falcon agent
+  hosts: new_instances
   gather_facts: true
   roles:
     - role: roles/setup_falcon
