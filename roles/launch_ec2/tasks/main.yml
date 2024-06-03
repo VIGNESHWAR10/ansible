@@ -10,10 +10,6 @@
   ignore_errors: true
 
 - name: Gather EC2 facts
-  vars:
-    ec2_tags_filter:
-      "tag:Name": "{{ item.tags.Name }}"
-      "instance-state-name": ["running", "pending"]
   amazon.aws.ec2_instance_info:
     region: "{{ region }}"
     filters: "{{ ec2_tags_filter }}"
@@ -48,20 +44,20 @@
     delay: 40  # Wait 40 seconds before starting the check
   loop: "{{ newly_created_instances.results }}"
   when: 
-   - newly_created_instances.changed # only run when new instances are created
-   - item.changed == true
-   - not ansible_check_mode
+    - newly_created_instances.changed
+    - item.changed == true
+    - not ansible_check_mode
 
 - name: Refresh inventory to ensure new instances are included
   meta: refresh_inventory
 
-- name: Add new instances to falcon_agents group
+- name: Add newly created instances to new_instances host group
   add_host:
-    name: "{{ item.instances.0.public_ip_address }}"
-    groups: falcon_agents
+    name: "{{ item.instances.0.tags.Name }}"
+    groups: new_instances
     ansible_user: ec2-user  # Specify the appropriate user for your EC2 instances
   loop: "{{ newly_created_instances.results }}"
   when: 
     - newly_created_instances.changed
+    - item.changed == true
     - not ansible_check_mode
-  tags: falcon

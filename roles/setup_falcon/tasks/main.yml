@@ -1,21 +1,19 @@
 ---
 # tasks file for setup_falcon
 
-- name: Check if falcon-agent install script already exists
-  ansible.builtin.stat:
-    path: "{{ falcon_agent_script_location }}"
-  register: result
+- name: Gather service facts
+  ansible.builtin.service_facts:
 
 - name: Download the Falcon Script
   ansible.builtin.get_url:
     url: "{{ falcon_agent_script_url }}"
     dest: "{{ falcon_agent_script_location }}"
     mode: '0755'
-  when: not result.stat.exists
+  when: "'falcon-sensor.service' not in services"
   
 - name: Execute install_falcon script
   command: "sudo bash {{ falcon_agent_script_location }}"
-  when: not result.stat.exists
+  when: "'falcon-sensor.service' not in services"
 
 - name: Ensure the service is running and enabled on startup
   ansible.builtin.service:
