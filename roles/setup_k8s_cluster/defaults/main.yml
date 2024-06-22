@@ -72,7 +72,7 @@ worker_packages:
 
 templates:
   - src: templates/encryption-config.yaml.j2
-    dest: /var/lib/kubernetes/manifests/encryption-config.yaml
+    dest: /var/lib/kubernetes/encryption-config.yaml
     owner: root
     group: root
     mode: '0644'

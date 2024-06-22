@@ -1,38 +1,115 @@
-Role Name
+Setup Kubernetes Cluster (Manual)
 =========
 
-A brief description of the role goes here.
+Role used to create Kubernetes Cluster of using 5 EC2 instances
 
-Requirements
-------------
-
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+<h2>Cluster Details:</h2>
+<h4><b>Cluster Name</b>: kubernetes</h4>
+<h4>Node Info:</h4>
+  <table>
+    <thead>
+      <tr>
+        <th>Node Type</th>
+        <th>Node Names</th>
+        <th>Count</th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td><b>Master</b></td>
+              <td>
+                kube-master-1,
+                kube-master-2
+              </td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td><b>Worker</b></td>
+              <td>
+                kube-worker-1,
+                kube-worker-2
+              </td>
+            <td>2</td>
+        </tr>
+        <tr>
+            <td><b>LoadBalancer</b></td>
+              <td>
+                kube-loadbalancer
+              </td>
+            <td>1</td>
+        </tr>
+    </tbody>
+  </table>
+  </b><h4>Component details:</h4></b>
+  <table>
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Version</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>etcd</b></td>
+        <td>v3.5.14</td>
+      </tr>
+      <tr>
+        <td><b>kube-apiserver</b></td>
+        <td>v1.30.2</td>
+      </tr>
+      <tr>
+        <td><b>kube-controller-manager</b></td>
+        <td>v1.30.2</td>
+      </tr>
+      <tr>
+        <td><b>kube-scheduler</b></td>
+        <td>v1.30.2</td>
+      </tr>
+      <tr>
+        <td><b>kube-proxy</b></td>
+        <td>v1.30.2</td>
+      </tr>
+      <tr>
+        <td><b>kubelet</b></td>
+        <td>v1.30.2</td>
+      </tr>
+      <tr>
+        <td><b>kubectl</b></td>
+        <td>v1.30.2</td>
+      </tr>
+      <tr>
+        <td><b>weaveworks network</b></td>
+        <td>v2.8.1</td>
+      </tr>
+      <tr>
+        <td><b>coredns</b></td>
+        <td>latest (currently - v1.9.4)</td>
+      </tr>
+      <tr>
+        <td><b>HA-Proxy</b></td>
+        <td>latest (currently -v2.8.3)</td>
+      </tr>
+    </tbody>
+  </table>
 
 Role Variables
 --------------
 
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+All variables that can be overriden are specified in [kuberenetes_cluster.yml](../../vars/kubernetes_cluster.yml).
 
-Dependencies
-------------
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+<b>ATTENTION!</b>
+* Do check and modify the cluster version as per your needs
+* Additional nodes can be specified, but the tag values should remain same.
 
 Example Playbook
 ----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
     - hosts: servers
       roles:
-         - { role: username.rolename, x: 42 }
+         - setup_k8s_cluster
 
-License
--------
-
-BSD
-
-Author Information
+Existing Playbook Execution:
 ------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+  * To run playbook: 
+  `ansible-playbook playbooks/launch_k8s_cluster.yml`
+  * To run without installing falcon-agent:
+  `ansible-playbook playbooks/launch_k8s_cluster.yml --skip-tags falcon`
