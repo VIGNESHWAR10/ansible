@@ -1,0 +1,114 @@
+- name: Configure certificates
+  become: true
+  block:
+    - name: Check if CA certificates is already available [kube-master-1]
+      ansible.builtin.stat:
+        path: "{{ ca_certificate_config.crt }}"
+      when: "'tag_Name_kube_master_1' in group_names"
+      register: ca_crt
+
+    - name: Generate CA certificate [kube-master-1]
+      ansible.builtin.shell: |
+        # Create private key for CA
+        openssl genrsa -out {{ ca_certificate_config.key }} 2048
+
+        # Create CSR using the private key
+        openssl req -new -key {{ ca_certificate_config.key }} -subj "/CN=KUBERNETES-CA/O=Kubernetes" \
+          -out {{ ca_certificate_config.csr }}
+
+        # Self sign the csr using its own private key
+        openssl x509 -req -in {{ ca_certificate_config.csr }} -signkey {{ ca_certificate_config.key }} \
+          -CAcreateserial -out {{ ca_certificate_config.crt }} -days 1000
+      when: 
+        - "'tag_Name_kube_master_1' in group_names"
+        - not ca_crt.stat.exists
+    
+    - name: Check if certificates files are available [kube-master-1]
+      ansible.builtin.stat:
+        path: "{{ item.crt }}"
+      loop: "{{ certificates }}"
+      register: certs_stat
+      when: "'tag_Name_kube_master_1' in group_names"
+
+    - name: Generate Kubernetes certificates [kube-master-1]
+      ansible.builtin.shell: |
+        # Generate private key
+        openssl genrsa -out {{ item.key }} 2048
+
+        # Generate CSR
+        openssl req -new -key {{ item.key }} -subj {{ item.subject }} \
+          -out {{ item.csr }} {% if item.ssl_conf is defined %} -config {{ item.ssl_conf }} {% endif %}
+
+        # Sign certificate using CA servers private key
+        openssl x509 -req -in {{ item.csr }} -CA {{ ca_certificate_config.crt }} \
+          -CAkey {{ ca_certificate_config.key }} -CAcreateserial -out {{ item.crt }} \
+          -days 1000 {% if item.ssl_conf is defined %} -extensions v3_req -extfile {{ item.ssl_conf }}  {% endif %}
+      loop: "{{ certificates }}"
+      loop_control:
+        extended: true
+      when: 
+        - "'tag_Name_kube_master_1' in group_names"
+        - not item.name == "ca"
+        - not certs_stat.results[ansible_loop.index0].stat.exists
+    
+    - name: Fetch the generated certs from [kube-master-1] and store it in local
+      ansible.builtin.fetch:
+        src: "{{ item.crt }}"
+        dest: "/tmp/{{ item.name }}.crt"
+        flat: yes
+      when: 
+        - "'tag_Name_kube_master_1' in group_names"
+      loop: "{{ certificates }}"
+      loop_control:
+        extended: true
+
+    - name: Set certificates list based on host group
+      set_fact:
+        certs_to_copy: "{{ role_specific_config[item].certificates | default([]) }}"
+      with_items: "{{ group_names }}"
+      when: item in role_specific_config
+
+    - name: Ensure role-specific certificates exist
+      ansible.builtin.copy:
+        src: "/tmp/{{ item.name }}"
+        dest: "{{ item.path }}"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      loop: "{{ certs_to_copy }}"
+      loop_control:
+        extended: true
+      when: 
+        - certs_to_copy | length > 0
+        - "'tag_Name_kube_master_1' not in group_names" 
+   
+    
+    - name: Fetch the generated keys from [kube-master-1] and store it in local
+      ansible.builtin.fetch:
+        src: "{{ item.key }}"
+        dest: "/tmp/{{ item.name }}.key"
+        flat: yes
+      when: "'tag_Name_kube_master_1' in group_names"
+      loop: "{{ certificates }}"
+      loop_control:
+        extended: true
+
+    - name: Set keys list based on host group
+      set_fact:
+        keys_to_copy: "{{ role_specific_config[item].certkeys | default([]) }}"
+      with_items: "{{ group_names }}"
+      when: item in role_specific_config
+
+    - name: Ensure role-specific keys exist
+      ansible.builtin.copy:
+        src: "/tmp/{{ item.name }}"
+        dest: "{{ item.path }}"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      loop: "{{ keys_to_copy }}"
+      loop_control:
+        extended: true
+      when: 
+        - keys_to_copy | length > 0
+        - "'tag_Name_kube_master_1' not in group_names"

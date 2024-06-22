@@ -1,2 +1,18 @@
 ---
 # handlers file for launch_k8s_cluster
+
+- name: Enable and restart etcd
+  systemd:
+    name: etcd
+    enabled: yes
+    state: restarted
+    daemon_reload: yes
+  become: true
+
+- name: Enable and restart kubernetes controller components
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+    daemon_reload: true
+  loop: "{{ kubernetes_controller_components }}"

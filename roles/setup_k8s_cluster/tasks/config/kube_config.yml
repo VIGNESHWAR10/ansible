@@ -1,0 +1,105 @@
+- name: Configure kube-config
+  become: true
+  block:
+    - name: Place kubernetes.repo template [kube-master-1]
+      ansible.builtin.template:
+        src: "templates/kubernetes.repo.j2"
+        dest: "/etc/yum.repos.d/kubernetes.repo"
+        owner: root
+        group: root
+        mode: '0644'
+      when: "'tag_Name_kube_master_1' in group_names"
+
+    - name: install kubectl [kube-master-1]
+      ansible.builtin.yum:
+        name: kubectl
+        state: present
+      when: "'tag_Name_kube_master_1' in group_names"
+    
+    - name: check if admin kube-config for user authentication is already generated [kube-master-1]
+      ansible.builtin.stat:
+        path: "/root/.kube/config"
+      register: admin_kube_config_stat
+      when: "'tag_Name_kube_master_1' in group_names"
+    
+    - name: generate admin kube-config for user authentication [kube-master-1]
+      ansible.builtin.shell: |
+        source /etc/profile.d/env_vars.sh
+        
+        kubectl config set-cluster kubernetes \
+          --certificate-authority=/var/lib/kubernetes/pki/ca.crt \
+          --embed-certs=true \
+          --server=https://${LOADBALANCER}:6443
+
+        kubectl config set-credentials admin \
+          --client-certificate=/var/lib/kubernetes/pki/admin.crt \
+          --client-key=/var/lib/kubernetes/pki/admin.key
+
+        kubectl config set-context kubernetes \
+          --cluster=kubernetes \
+          --user=admin
+
+        kubectl config use-context kubernetes
+      when: 
+        - "'tag_Name_kube_master_1' in group_names"
+        - not admin_kube_config_stat.stat.exists
+    
+    - name: check if common kubeconfig files are already generated [kube-master-1]
+      ansible.builtin.stat:
+        path: "{{ item.path }}"
+      loop: "{{ kube_config }}"
+      register: kube_config_stat
+      when: "'tag_Name_kube_master_1' in group_names"
+
+    - name: Generate kubeconfig [kube-master-1]
+      ansible.builtin.shell: |
+        source /etc/profile.d/env_vars.sh
+
+        kubectl config set-cluster kubernetes --certificate-authority "{{ ca_certificate_config.crt }}" \
+          --embed-certs=true --server="{{ item.server }}":6443 \
+          --kubeconfig="{{ item.path }}"
+
+        kubectl config set-credentials "{{ item.user }}" \
+          --client-certificate="{{ item.crt }}" --client-key="{{ item.key }}" \
+          --embed-certs=true --kubeconfig="{{ item.path }}"
+
+        kubectl config set-context default --cluster=kubernetes --user="{{ item.user }}" \
+          --kubeconfig="{{ item.path }}"
+
+        kubectl config use-context default --kubeconfig="{{ item.path }}"
+      loop: "{{ kube_config }}"
+      loop_control:
+        extended: true
+      when: 
+        - "'tag_Name_kube_master_1' in group_names"
+        - not kube_config_stat.results[ansible_loop.index0].stat.exists
+
+    - name: Fetch the generated kubeconfig from [kube-master-1] and store it in local
+      ansible.builtin.fetch:
+        src: "{{ item.path }}"
+        dest: "/tmp/{{ item.name }}"
+        flat: yes
+      when: "'tag_Name_kube_master_1' in group_names"
+      loop: "{{ kube_config }}"
+      loop_control:
+        extended: true
+    
+    - name: Set kubeconfig list based on host group
+      set_fact:
+        kubeconfig_to_copy: "{{ role_specific_config[item].kubeconfig | default([]) }}"
+      with_items: "{{ group_names }}"
+      when: item in role_specific_config
+    
+    - name: Ensure role-specific kubeconfig exist
+      ansible.builtin.copy:
+        src: "/tmp/{{ item.name }}"
+        dest: "{{ item.path }}"
+        owner: "root"
+        group: "root"
+        mode: "0644"
+      loop: "{{ kubeconfig_to_copy }}"
+      loop_control:
+        extended: true
+      when: 
+        - kubeconfig_to_copy | length > 0
+        - "'tag_Name_kube_master_1' not in group_names"

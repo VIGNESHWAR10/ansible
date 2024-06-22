@@ -1,0 +1,121 @@
+# Tasks to place config files, ensure necessary directories in all nodes
+
+- name: Update /etc/hosts file with node information
+  tags: always
+  become: true
+  block:
+    - name: Collect IP information of all nodes
+      ansible.builtin.set_fact:
+        host_ips: "{{ groups['kubernetes'] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | zip(groups['kubernetes']) | list }}"
+      run_once: true
+
+    - name: Add dns entries to /etc/hosts [all]
+      ansible.builtin.lineinfile:
+        create: yes
+        line: "{{ item[0] }} {{ item[1] }}"
+        path: /etc/hosts
+        state: present
+      loop: "{{ host_ips }}"
+
+- name: Configure env_vars script for nodes
+  tags: always
+  become: true
+  block:
+    - name: Check if env_vars file is available
+      ansible.builtin.stat:
+        path: "/etc/profile.d/env_vars.sh"
+      run_once: true
+      register: env_vars_file
+
+    - name: Generate Encryption key
+      ansible.builtin.shell: head -c 32 /dev/urandom | base64
+      when: not env_vars_file.stat.exists
+      delegate_to: localhost
+      run_once: true
+      register: encryption_key_result
+
+    - name: Set Encryption key fact
+      ansible.builtin.set_fact:
+        encryption_key: "{{ encryption_key_result.stdout }}"
+      when: not env_vars_file.stat.exists
+      delegate_to: localhost
+      run_once: true
+
+    - name: Create env_vars.sh script with encryption key
+      ansible.builtin.template:
+        src: templates/scripts/env_vars.sh.j2
+        dest: /tmp/env_vars.sh
+        mode: '0755'
+      when: not env_vars_file.stat.exists
+      delegate_to: localhost
+      run_once: true
+
+    - name: Copy env_vars script to all nodes
+      ansible.builtin.template:
+        src: "/tmp/env_vars.sh"
+        dest: "/etc/profile.d/env_vars.sh"
+        owner: root
+        group: root
+        mode: '0755'
+
+- name: create role specific directories
+  tags: always
+  become: true
+  block:
+    - name: Set directories list based on host group
+      set_fact:
+        directories_to_create: "{{ role_specific_config[item].directories | default([]) }}"
+      with_items: "{{ group_names }}"
+      when: item in role_specific_config
+      
+    - name: Ensure role-specific directories existt
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0700'
+        owner: root
+        group: root
+      loop: "{{ directories_to_create }}"
+      when: directories_to_create | length > 0
+
+- name: Copy Role specific Configuration Files
+  tags: always
+  become: true
+  block:
+    - name: Set configuration file list based on host group
+      set_fact:
+        config_to_copy: "{{ role_specific_config[item].config_files | default([]) }}"
+      with_items: "{{ group_names }}"
+      when: item in role_specific_config
+    
+    - name: Check if configuration files are available
+      ansible.builtin.stat:
+        path: "{{ item.dest }}"
+      loop: "{{ config_to_copy }}"
+      register: config_files_stat
+      when: config_to_copy | length > 0
+
+    - name: Ensure role-specific configuration files exist
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        owner: "{{ item.owner}}"
+        group: "{{ item.group }}"
+        mode: "{{ item.mode }}"
+      loop: "{{ config_to_copy }}"
+      loop_control:
+        extended: true
+      when: 
+        - config_to_copy | length > 0
+        - not config_files_stat.results[ansible_loop.index0].stat.exists
+    
+    - name: fill templates with env vars
+      ansible.builtin.shell: |
+        source /etc/profile.d/env_vars.sh && envsubst < "{{ item.dest }}" > /root/output
+        mv /root/output "{{ item.dest }}"
+      loop: "{{ config_to_copy }}"
+      loop_control:
+        extended: true
+      when: 
+        - config_to_copy | length > 0
+        - not config_files_stat.results[ansible_loop.index0].stat.exists

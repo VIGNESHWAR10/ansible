@@ -1,15 +1,63 @@
----
-- name: Download and install kubernetes components
-  ansible.builtin.shell: |
-    source /etc/profile.d/env_vars.sh
-    
-    source /etc/profile.d/env_vars.sh && wget -q \
-     "https://dl.k8s.io/{{ KUBERNETES_VERSION }}/bin/linux/amd64/{{ item.name }}" \
-     -O /tmp/{{ item.name }}
-
-    chmod +x /tmp/{{ item.name }}
-
-    sudo mv /tmp/{{ item.name }} /usr/local/bin/
+- name: Configure Kubernetes Controller Components
   become: true
-  loop: "{{ kubernetes_controller }}"
-  when: "'tag_Role_master_node' in group_names"
+  block:
+  - name: Check if Kubernetes Controller Components are already installed
+    ansible.builtin.shell: which {{ item.name }}
+    register: kubernetes_controller_check
+    when: 
+      - "'tag_Role_master_node' in group_names"
+      - not item.name == 'etcd'
+    ignore_errors: yes
+    loop: "{{ kubernetes_controller_components }}"
+  
+  # - name: print result
+  #   ansible.builtin.debug:
+  #     msg: "{{ item.changed }}"
+  #   loop: "{{ kubernetes_controller_check.results }}"
+  #   when: 
+  #    - "'tag_Role_master_node' in group_names"
+  #    - not item.item.name == 'etcd'
+  
+  - name: Download and install kubernetes components
+    ansible.builtin.shell: |
+      source /etc/profile.d/env_vars.sh
+      
+      source /etc/profile.d/env_vars.sh && wget -q \
+      "https://dl.k8s.io/{{ kubernetes_version }}/bin/linux/amd64/{{ item.item.name }}" \
+      -O /tmp/{{ item.item.name }}
+
+      chmod +x /tmp/{{ item.item.name }}
+
+      sudo mv /tmp/{{ item.item.name }} /usr/local/bin/
+    loop: "{{ kubernetes_controller_check.results }}"
+    when: 
+      - "'tag_Role_master_node' in group_names"
+      - not item.changed
+      - not item.item.name == 'etcd'
+  
+  - name: Enable and restart kubernetes controller components
+    ansible.builtin.service:
+      name: "{{ item.name }}"
+      state: restarted
+      enabled: yes
+      daemon_reload: true
+    loop: "{{ kubernetes_controller_components }}"
+    when: "'tag_Role_master_node' in group_names"
+
+# - name: Download and install kubernetes components
+#   ansible.builtin.shell: |
+#     source /etc/profile.d/env_vars.sh
+    
+#     source /etc/profile.d/env_vars.sh && wget -q \
+#      "https://dl.k8s.io/{{ kubernetes_version }}/bin/linux/amd64/{{ item.name }}" \
+#      -O /tmp/{{ item.name }}
+
+#     chmod +x /tmp/{{ item.name }}
+
+#     sudo mv /tmp/{{ item.name }} /usr/local/bin/
+#   become: true
+#   loop: "{{ kubernetes_controller_components }}"
+#   when: 
+#     - "'tag_Role_master_node' in group_names"
+#     - not item.name == 'etcd'
+#   notify: Enable and restart kubernetes controller components

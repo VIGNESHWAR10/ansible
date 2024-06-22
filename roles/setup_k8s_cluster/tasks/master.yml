@@ -1,0 +1,13 @@
+# tasks related to master nodes
+
+# - name: Manage certificates
+#   include_tasks: config/certificates.yml
+
+# - name: Manage kube-config
+#   include_tasks: config/kube_config.yml
+
+- name: configure ETCD
+  include_tasks: components/etcd.yml
+
+# - name: configure Kubernetes Master Components
+#   include_tasks: components/kubernetes_controller.yml
