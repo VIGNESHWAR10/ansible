@@ -7,6 +7,10 @@ count: 1
 region: ap-south-1
 vpc_id: vpc-0b3591847763615ba
 
+KUBERNETES_VERSION: "v1.30.2"
+KUBE_VERSION: "v1.30"
+ETCD_VERSION: "v3.5.14"
+
 instance_list:
   - name: kube-master-1
     subnet_id: "subnet-0f3a61901710ca80b" #PublicSubnet1
@@ -45,7 +49,7 @@ sg_rules:
   - proto: tcp
     from_port: 22
     to_port: 22
-    cidr_ip: 0.0.0.0/0
+    cidr_ip: 10.0.0.0/16
   - proto: tcp
     from_port: 30000
     to_port: 32767
