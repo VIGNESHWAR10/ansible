@@ -1,0 +1,30 @@
+---
+# tasks file for launch_k8s_cluster
+
+- include_tasks: base/update_hosts.yml
+
+- include_tasks: base/ssh_setup.yml
+
+- include_tasks: config/generate_certs.yml
+
+- include_tasks: config/install_kubectl.yml
+
+- include_tasks: config/generate_kube_config.yml
+
+- include_tasks: config/copy_config_to_nodes.yml
+
+- include_tasks: components/etcd.yml
+
+- include_tasks: components/kubernetes_controller.yml
+
+- include_tasks: components/place_templates.yml
+
+- include_tasks: base/loadbalancer.yml
+
+- include_tasks: base/workers.yml
+
+- include_tasks: components/pod_networking.yml
+
+- include_tasks: components/apiserver-to-kubelet.yml
+
+- include_tasks: components/coredns.yml

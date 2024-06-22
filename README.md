@@ -42,6 +42,10 @@ ansible-playbook playbooks/launch_ec2.yml
   * [Check Role](roles/setup_falcon/README.md) 
   * [Check Playbook](playbooks/setup_falcon.yml)
 
+* <b>launch_k8s_cluster</b> - Used to install Falcon-Agent on EC2 instances 
+  * [Check Role](roles/launch_k8s_cluster/README.md) 
+  * [Check Playbook](playbooks/launch_k8s_cluster.yml)
+
 ## Contact
 
 #### Vigneshwar Mahendran 

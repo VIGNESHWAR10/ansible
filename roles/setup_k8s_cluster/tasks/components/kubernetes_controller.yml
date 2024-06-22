@@ -1,0 +1,15 @@
+---
+- name: Download and install kubernetes components
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh
+    
+    source /etc/profile.d/env_vars.sh && wget -q \
+     "https://dl.k8s.io/{{ KUBERNETES_VERSION }}/bin/linux/amd64/{{ item.name }}" \
+     -O /tmp/{{ item.name }}
+
+    chmod +x /tmp/{{ item.name }}
+
+    sudo mv /tmp/{{ item.name }} /usr/local/bin/
+  become: true
+  loop: "{{ kubernetes_controller }}"
+  when: "'tag_Role_master_node' in group_names"

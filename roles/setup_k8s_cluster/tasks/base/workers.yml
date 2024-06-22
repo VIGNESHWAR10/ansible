@@ -1,0 +1,122 @@
+---
+- name: create worker directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0700'
+    owner: root
+    group: root
+  loop: "{{ worker_directories }}"
+  become: true
+  when: '"tag_Role_worker_node" in group_names'
+
+
+- name: place worker templates
+  ansible.builtin.template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop: "{{ worker_templates }}"
+  when: '"tag_Role_worker_node" in group_names'
+  become: true
+
+- name: fill templates with env vars in worker nodes
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh && envsubst < "{{ item.dest }}" > /root/output
+    mv /root/output "{{ item.dest }}"
+  loop: "{{ worker_templates }}"
+  when: "'tag_Role_worker_node' in group_names"
+  become: true
+
+- name: setup kernel modules and parameters
+  ansible.builtin.shell: |
+    # Set up the required kernel modules
+    modprobe overlay
+    modprobe br_netfilter
+    modprobe nf_conntrack
+
+    #Set up the required kernel parameters
+    sudo sysctl --system
+  when: '"tag_Role_worker_node" in group_names'
+  become: true
+
+- name: install container runtime and CNI components
+  ansible.builtin.yum:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ worker_packages }}"
+  when: '"tag_Role_worker_node" in group_names'
+  become: true
+
+- name: Configure container runtime to use systemd Cgroups
+  ansible.builtin.shell: |
+    containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' | sudo tee /etc/containerd/config.toml
+
+    systemctl restart containerd
+  when: '"tag_Role_worker_node" in group_names'
+  become: true
+
+- name: Authorize nodes (kubelets) to Create and Auto Renew Certificates
+  ansible.builtin.shell: |
+    kubectl apply -f "{{ item }}" \
+      --kubeconfig /var/lib/kubernetes/admin.kubeconfig
+  loop: "{{ worker_certificate_autorenew_manifests }}"
+  when: '"tag_Name_kube_master_1" in group_names'
+  become: true
+
+- name: Download and install kube-proxy and kubelet
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh && wget -q \
+     "https://dl.k8s.io/{{ KUBERNETES_VERSION }}/bin/linux/amd64/{{ item.name }}" \
+     -O /tmp/{{ item.name }}
+
+    chmod +x /tmp/{{ item.name }}
+
+    sudo mv /tmp/{{ item.name }} /usr/local/bin/
+  become: true
+  loop:
+    - name: kube-proxy
+    - name: kubelet
+  when: '"tag_Role_worker_node" in group_names'
+
+- name: enable & start kubelet and kube-proxy
+  ansible.builtin.systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: restarted
+  loop:
+    - kubelet
+    - kube-proxy
+  when: '"tag_Role_worker_node" in group_names'
+  become: true
+
+- name: approve certificates for worker nodes
+  ansible.builtin.shell: |
+    kubectl certificate approve \
+      $(kubectl get csr --kubeconfig /var/lib/kubernetes/admin.kubeconfig | grep Pending | awk '{print $1}') \
+      --kubeconfig /var/lib/kubernetes/admin.kubeconfig
+  when: '"tag_Name_kube_master_1" in group_names'
+  become: true
+
+- name: generate admin kube-config [kube-master-1]
+  ansible.builtin.shell: |
+    source /etc/profile.d/env_vars.sh
+    
+    kubectl config set-cluster kubernetes \
+      --certificate-authority=/var/lib/kubernetes/pki/ca.crt \
+      --embed-certs=true \
+      --server=https://${LOADBALANCER}:6443
+
+    kubectl config set-credentials admin \
+      --client-certificate=/var/lib/kubernetes/pki/admin.crt \
+      --client-key=/var/lib/kubernetes/pki/admin.key
+
+    kubectl config set-context kubernetes \
+      --cluster=kubernetes \
+      --user=admin
+
+    kubectl config use-context kubernetes
+  become: true
+  when: "'tag_Name_kube_master_1' in group_names"

@@ -1,0 +1,26 @@
+---
+# create ssh key in kube_master_1 and copy to all other nodes
+
+- name: Generate an SSH key pair on the kube-master-1
+  ansible.builtin.openssh_keypair:
+    path: "{{ ssh_key_path }}"
+  when: "'tag_Name_kube_master_1' in group_names"
+  become: true
+
+- name: Fetch the generated SSH public key from the kube-master-1 and store it in local
+  ansible.builtin.fetch:
+    src: "{{ ssh_key_path }}.pub"
+    dest: "/tmp/id_rsa.pub"
+    flat: yes
+  when: "'tag_Name_kube_master_1' in group_names"
+  become: true
+
+- name: Copy the SSH public key to other nodes
+  ansible.builtin.copy:
+    src: "/tmp/id_rsa.pub"
+    dest: "/root/.ssh/authorized_keys"
+    owner: root
+    group: root
+    mode: '0600'
+  when: "'tag_Name_kube_master_1' not in group_names"
+  become: true

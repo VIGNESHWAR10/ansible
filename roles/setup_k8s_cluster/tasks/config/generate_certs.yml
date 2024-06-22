@@ -1,0 +1,34 @@
+---
+# generate kubernetes certificates
+- name: Generate CA Certificate in kube-master-1
+  ansible.builtin.shell: |
+   # Create private key for CA
+   openssl genrsa -out {{ certificates[0].key }} 2048
+
+   # Create CSR using the private key
+   openssl req -new -key {{ certificates[0].key }} -subj "/CN=KUBERNETES-CA/O=Kubernetes" -out {{ certificates[0].csr }}
+
+   # Self sign the csr using its own private key
+   openssl x509 -req -in {{ certificates[0].csr }} -signkey {{ certificates[0].key }} \
+     -CAcreateserial -out {{ certificates[0].crt }} -days 1000
+  when: "'tag_Name_kube_master_1' in group_names"
+  become: true
+
+- name: Generate Kubernetes Certs in kube-master-1
+  ansible.builtin.shell: |
+   # Generate private key
+   openssl genrsa -out {{ item.key }} 2048
+
+   # Generate CSR
+   openssl req -new -key {{ item.key }} -subj {{ item.subject }} \
+     -out {{ item.csr }} {% if item.ssl_conf is defined %} -config {{ item.ssl_conf }} {% endif %}
+
+   # Sign certificate using CA servers private key
+   openssl x509 -req -in {{ item.csr }} -CA {{ certificates[0].crt }} -CAkey {{ certificates[0].key }} \
+     -CAcreateserial -out {{ item.crt }} \
+     -days 1000 {% if item.ssl_conf is defined %} -extensions v3_req -extfile {{ item.ssl_conf }}  {% endif %}
+  loop: "{{ certificates }}"
+  when: 
+    - "'tag_Name_kube_master_1' in group_names"
+    - item.name != "ca"
+  become: true
