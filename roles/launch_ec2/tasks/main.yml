@@ -1,11 +1,13 @@
 ---
 - name: Create SG if not exists
   amazon.aws.ec2_security_group:
-    name: "{{ sg_group_name }}"
-    description: "{{ sg_group_description }}"
+    name: "{{ item.name }}"
+    description: "{{ item.description }}"
     vpc_id: "{{ vpc_id }}"
     region: "{{ region }}"
-    rules: "{{ sg_rules }}"
+    rules: "{{ item.rules }}"
+    tags: "{{ item.tags }}"
+  loop: "{{ security_groups }}"
   register: ec2_sg
   ignore_errors: true
 
@@ -25,7 +27,7 @@
     key_name: "{{ keypair }}"
     vpc_subnet_id: "{{ item.0.subnet_id }}"
     instance_type: "{{ instance_type }}"
-    security_groups: "{{ ec2_sg.group_id }}"
+    security_groups: "{{ item.0.security_groups }}"
     count: "{{ count }}"
     tags: "{{ item.0.tags }}"
     network:

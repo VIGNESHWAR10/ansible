@@ -6,27 +6,31 @@ count: 1
 region: ap-south-1
 vpc_id: vpc-0b3591847763615ba
 
+security_groups:
+  - name: sample
+    description: "Sample SG"
+    rules:
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: 0.0.0.0/0
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 0.0.0.0/0
+    tags:
+      Name: sample-SG
+
 instance_list:
   - name: sample-instance
     subnet_id: "subnet-0f3a61901710ca80b" #PublicSubnet1
     tags:
       Name: sample-instance
-
-sg_group_name: sample
-sg_group_description: "Sample SG"
-sg_rules:
-  - proto: tcp
-    from_port: 80
-    to_port: 80
-    cidr_ip: 0.0.0.0/0
-  - proto: tcp
-    from_port: 443
-    to_port: 443
-    cidr_ip: 0.0.0.0/0
-  - proto: tcp
-    from_port: 22
-    to_port: 22
-    cidr_ip: 0.0.0.0/0
+    security_groups: "{{ security_groups | map(attribute='name') | join(',') }}"
 
 ec2_tags_filter:
   "tag:Name": "{{ item.tags.Name }}"
