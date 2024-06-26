@@ -1,0 +1,93 @@
+---
+- name: Configure cluster instances list
+  hosts: localhost
+  gather_facts: false
+  vars_files:
+    - ../vars/kubernetes_cluster_using_kubeadm.yml
+  tasks:
+    - name: Initialize Empty Cluster instances list variable
+      set_fact:
+        instance_list: []
+
+    # Generate master instances
+    - name: Generate master instances based on master_nodes count
+      set_fact:
+        instance_list: "{{ instance_list + 
+            [
+              {
+                'name': master.name_prefix + '%02d'|format(item + 1),
+                'subnet_id': subnet_ids[item % subnet_ids | length],
+                'tags': {
+                  'Name': master.name_prefix + '%02d'|format(item + 1),
+                  'Role': 'master',
+                  'Cluster': cluster_name
+                },
+                'security_groups': [
+                  'kube-common',
+                  'kube-master'
+                ]
+              }
+            ]
+          }}"
+      loop: "{{ range(0, master.node_count) | list }}"
+      loop_control:
+        loop_var: item
+
+    # Generate worker instances
+    - name: Generate worker instances based on worker_nodes count
+      set_fact:
+        instance_list: "{{ instance_list + 
+            [
+              {
+                'name': worker.name_prefix + '%02d'|format(item + 1),
+                'subnet_id': subnet_ids[item % subnet_ids | length],
+                'tags': {
+                  'Name': worker.name_prefix + '%02d'|format(item + 1),
+                  'Role': 'worker',
+                  'Cluster': cluster_name
+                },
+                'security_groups': [
+                  'kube-common',
+                  'kube-worker'
+                ]
+              }
+            ] 
+          }}"
+      loop: "{{ range(0, worker.node_count) | list }}"
+      loop_control:
+        loop_var: item
+
+- name: Launch Base EC2 instances
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  vars_files:
+    - ../vars/kubernetes_cluster_using_kubeadm.yml
+  roles:
+    - role: roles/launch_ec2
+
+- name: Set Hostname on Newly Created Instances
+  hosts: new_instances
+  become: true
+  tasks:
+    - name: Set system hostname to the 'Name' tag value
+      hostname:
+        name: "{{ inventory_hostname }}"
+
+- name: Setup Falcon agent on cluster instances
+  hosts: tag_Cluster_{{ cluster_name }}
+  gather_facts: false
+  vars_files:
+    - ../vars/kubernetes_cluster_using_kubeadm.yml
+  roles:
+    - role: roles/setup_falcon
+  tags: [falcon]
+
+- name: Configure Kubernetes Cluster using kubeadm
+  hosts: tag_Cluster_{{ cluster_name }}
+  gather_facts: true
+  vars_files:
+    - ../vars/kubernetes_cluster_using_kubeadm.yml
+  roles:
+    - role: roles/k8s_cluster_kubeadm
+  tags: [kubernetes]

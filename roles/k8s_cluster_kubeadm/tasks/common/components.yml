@@ -1,0 +1,27 @@
+- name: Install common components [kubeadm, kubectl & kubelet]
+  become: true
+  block:
+    - name: set SELinux to permissive mode
+      selinux:
+        policy: targeted
+        state: permissive
+      when: ansible_selinux.status == 'enabled'
+    
+    - name: Add Kubernetes repository
+      template:
+        src: templates/kubernetes.repo.j2
+        dest: /etc/yum.repos.d/kubernetes.repo
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: install kubeadm, kubectl & kubelet
+      yum:
+        name: "{{ item }}"
+        state: present
+        disable_excludes: kubernetes
+      loop:
+        - kubeadm
+        - kubectl
+        - kubelet
+      notify: enable and start kubelet

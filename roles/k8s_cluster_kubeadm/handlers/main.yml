@@ -1,0 +1,15 @@
+---
+# handlers file for roles/k8s_cluster_kubeadm
+- name: enable and restart containerd
+  systemd:
+    name: containerd
+    enabled: yes
+    state: restarted
+  become: true
+
+- name: enable and start kubelet
+  systemd:
+    name: kubelet
+    enabled: yes
+    state: started
+  become: true

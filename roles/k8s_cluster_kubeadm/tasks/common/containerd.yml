@@ -1,0 +1,42 @@
+- name: setup containerd
+  become: true
+  block:
+    - name: Gather service facts
+      ansible.builtin.service_facts:
+    
+    - name: ensure /etc/containerd directory exists
+      file:
+        path: /etc/containerd
+        state: directory
+        mode: '0644'
+        owner: root
+        group: root
+
+    - name: Download & Extract containerd tar.gz
+      unarchive:
+        src: "{{ containerd_url_path }}/{{ containerd_version_path }}"
+        dest: /usr/local
+        owner: root
+        group: root
+        mode: 0755
+        remote_src: yes
+      register: unarchive_result
+      when: "'containerd.service' not in services"
+    
+    - name: configure systemd cgroup driver (/etc.containerd/config.toml)
+      ansible.builtin.lineinfile:
+        path: /etc/containerd/config.toml
+        line: |
+          [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+            [plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+              SystemdCgroup = true
+        create: yes
+      when: "'containerd.service' not in services"
+
+    - name: Download containerd.service file
+      get_url:
+        url: "https://raw.githubusercontent.com/containerd/containerd/main/containerd.service"
+        dest: "/etc/systemd/system/containerd.service"
+      register: download_service_result
+      when: "'containerd.service' not in services"
+      notify: enable and restart containerd

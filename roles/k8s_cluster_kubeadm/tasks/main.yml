@@ -1,0 +1,10 @@
+---
+# tasks file for roles/k8s_cluster_kubeadm
+
+- include_tasks: base.yml
+
+# - include_tasks: master.yml
+#   when: "'tag_Role_master' in group_names"
+
+# - include_tasks: worker.yml
+#   when: "'tag_Role_worker' in group_names"

@@ -1,0 +1,125 @@
+---
+# vars file for launch_Kubernetes_cluster
+
+# cluster infrastructure details
+
+# role value is should be `master` for master_nodes and `worker` for worker_nodes
+# as the logic in the role will be based on the role value
+cluster_name: "kubernetes"
+master:
+  node_count: 1
+  name_prefix: "master-"
+worker:
+  node_count: 2
+  name_prefix: "worker-"
+
+# kubernetes version details
+containerd_version: "1.7.18"
+runc_version: "1.1.13"
+cni_plugins_version: "1.5.1"
+
+kubernetes_version: "v1.30.2"
+kubernetes_version_short: "v1.30"
+
+# base EC2 instance details
+keypair: my-docker-practice-key
+instance_type: t2.micro
+count: 1
+image: ami-0cc9838aa7ab1dce7
+region: ap-south-1
+vpc_id: vpc-0b3591847763615ba
+subnet_ids: 
+  - subnet-0f3a61901710ca80b #PublicSubnet1
+  - subnet-0c36ce8777d049a8c #PublicSubnet2
+
+# Security Group details
+# Reference URL: https://kubernetes.io/docs/reference/networking/ports-and-protocols/
+security_groups:
+  - name: kube-common
+    description: "Kubernetes cluster common SG"
+    rules:
+      - proto: tcp
+        from_port: 22
+        to_port: 22
+        cidr_ip: 106.222.0.0/16
+        rule_desc: "Allow SSH from my IP"
+      - proto: tcp
+        from_port: 80
+        to_port: 80
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "Allow HTTP traffic"
+      - proto: tcp
+        from_port: 443
+        to_port: 443
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "Allow HTTPS traffic"
+      - proto: tcp
+        from_port: 10250
+        to_port: 10250
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "Kubelet API"
+    tags:
+      Name: kube-common
+      Cluster: "{{ cluster_name }}"
+  - name: kube-master
+    description: "Kubernetes cluster master SG"
+    rules:
+      - proto: tcp
+        from_port: 2379
+        to_port: 2379
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "etcd server client API"
+      - proto: tcp
+        from_port: 2380
+        to_port: 2380
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "etcd server to server communication"
+      - proto: tcp
+        from_port: 6443
+        to_port: 6443
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "Kube-api-server client API"
+      - proto: tcp
+        from_port: 10257
+        to_port: 10257
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "Kube-controller-manager client API"
+      - proto: tcp
+        from_port: 10259
+        to_port: 10259
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "Kube-scheduler client API"
+    tags:
+      Name: kube-master
+      Cluster: "{{ cluster_name }}"
+  - name: kube-worker
+    description: "Kubernetes cluster worker SG"
+    rules:
+      - proto: tcp
+        from_port: 6783
+        to_port: 6783
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "network plugin port"
+      - proto: udp
+        from_port: 6783
+        to_port: 6783
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "network plugin port"
+      - proto: tcp
+        from_port: 6784
+        to_port: 6784
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "network plugin port"
+      - proto: tcp
+        from_port: 10256
+        to_port: 10256
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "Kube-proxy API"
+      - proto: tcp
+        from_port: 30000
+        to_port: 32767
+        cidr_ip: 10.0.0.0/16
+        rule_desc: "NodePort Services"
+    tags:
+      Name: kube-worker
+      Cluster: "{{ cluster_name }}"

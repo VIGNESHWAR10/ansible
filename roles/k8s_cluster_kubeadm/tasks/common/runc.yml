@@ -1,0 +1,20 @@
+- name: setup runc
+  become: true
+  block:
+    - name: find if runc is already installed
+      command: which runc
+      register: runc_installed
+      ignore_errors: yes
+
+    - name: Download runc
+      get_url:
+        url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.amd64"
+        dest: "/tmp/runc.amd64"
+        group: root
+        owner: root
+        mode: 0755
+      when: runc_installed.rc != 0
+
+    - name: install runc
+      command: install -m 755 /tmp/runc.amd64 /usr/local/sbin/runc
+      when: runc_installed.rc != 0
