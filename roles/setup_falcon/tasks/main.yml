@@ -18,6 +18,7 @@
 - name: Ensure the service is running and enabled on startup
   ansible.builtin.service:
     name: falcon-sensor
-    state: restarted
+    state: started
     enabled: yes
   become: true
+  when: "'falcon-sensor.service' not in services"
