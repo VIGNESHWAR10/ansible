@@ -1,38 +1,47 @@
-Role Name
+k8s_cluster_kubeadm
 =========
 
-A brief description of the role goes here.
+Role to setup kubernetes cluster using kubeadm with WeaveNet as CNI and metrics-server configured.
 
-Requirements
-------------
-
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+Role is developed for single master and multiple worker nodes setup and nodes are RHEL based.
 
 Role Variables
 --------------
-
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
+<b>kubernetes_version:</b> Kubernetes Version to be deployed in the cluster (default: <b>v1.29</b>)
+<b>cluster_name:</b> Kubernetes cluster name  (default: kubernetes). Should be set in the EC2 instance tags.
 
 Dependencies
 ------------
 
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
+This role expects certain tags to be available in the EC2 instances
+<table>
+  <tr>
+    <td><b>Tags</b></td>
+    <td><b>Description</b></td>
+  </tr>
+  <tr>
+    <td><b>Role</b><br>
+    (values cannot be changed)
+    </td>
+    <td>
+    <b>master</b> - for control-plane nodes<br>
+    <b>worker</b> - for worker nodes
+    </td>
+  </tr>
+  <tr>
+    <td><b>Cluster</b></td>
+    <td>Any name</td>
+  </tr>
+</table>
 
 Example Playbook
 ----------------
+```
+name: Configure Kubernetes Cluster using kubeadm
+  hosts: tag_Cluster_{{ cluster_name }}
+  gather_facts: true
+  roles:
+    - role: roles/k8s_cluster_kubeadm
+```
 
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+Complete playbook for launching EC2 instances (RHEL) and setting up kubernetes cluster using kubeadm can be found [here](../../playbooks/launch_k8s-cluster_kubeadm.yml).

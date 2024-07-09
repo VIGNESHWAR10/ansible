@@ -1,10 +1,24 @@
 ---
 # vars file for roles/k8s_cluster_kubeadm
 common_packages:
+  - curl
+  - device-mapper-persistent-data
+  - iproute-tc
+  - iptables
+  - lvm2
   - nc
+  - python3-dnf-plugin-versionlock
+  - telnet
+  - vim
+  - yum-utils
 
-containerd_url_path: "https://github.com/containerd/containerd/releases/download"
-containerd_version_path: "v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-amd64.tar.gz"
+system_modules:
+  - overlay
+  - br_netfilter
+  - ip_tables
+  - iptable_filter
 
-cni_url_path: "https://github.com/containernetworking/plugins/releases/download"
-cni_version_path: "v{{ cni_plugins_version }}/cni-plugins-linux-amd64-v{{ cni_plugins_version }}.tgz"
+components:
+  - kubeadm
+  - kubectl
+  - kubelet

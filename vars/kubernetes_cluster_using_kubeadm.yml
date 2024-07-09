@@ -1,125 +1,108 @@
 ---
 # vars file for launch_Kubernetes_cluster
 
+kubernetes_version: "v1.29"
+
 # cluster infrastructure details
 
-# role value is should be `master` for master_nodes and `worker` for worker_nodes
-# as the logic in the role will be based on the role value
+# role value is set to `master` for master_nodes and `worker` for worker_nodes (cannot be changed)
+# as the logic in the role is based on those values
+
 cluster_name: "kubernetes"
 master:
-  node_count: 1
+  node_count: 1 # do not change this value
   name_prefix: "master-"
 worker:
   node_count: 2
   name_prefix: "worker-"
 
-# kubernetes version details
-containerd_version: "1.7.18"
-runc_version: "1.1.13"
-cni_plugins_version: "1.5.1"
-
-kubernetes_version: "v1.30.2"
-kubernetes_version_short: "v1.30"
-
 # base EC2 instance details
-keypair: my-docker-practice-key
-instance_type: t2.micro
+keypair: my-docker-practice-key # your AWS key pair
+instance_type: t3.medium # change to your desired instance type
 count: 1
-image: ami-0cc9838aa7ab1dce7
+image: ami-022ce6f32988af5fa # Amazon RHEL 9
 region: ap-south-1
-vpc_id: vpc-0b3591847763615ba
+vpc_id: vpc-0b3591847763615ba # your VPC ID
 subnet_ids: 
-  - subnet-0f3a61901710ca80b #PublicSubnet1
-  - subnet-0c36ce8777d049a8c #PublicSubnet2
+  - subnet-0f3a61901710ca80b # your subnet ID1 
+  - subnet-0c36ce8777d049a8c # your subnet ID2
 
 # Security Group details
 # Reference URL: https://kubernetes.io/docs/reference/networking/ports-and-protocols/
 security_groups:
-  - name: kube-common
-    description: "Kubernetes cluster common SG"
+  - name: kubeadm_common_sg
+    description: "kubeadm common cluster SG"
     rules:
       - proto: tcp
-        from_port: 22
-        to_port: 22
-        cidr_ip: 106.222.0.0/16
-        rule_desc: "Allow SSH from my IP"
-      - proto: tcp
-        from_port: 80
-        to_port: 80
+        ports: 22
         cidr_ip: 0.0.0.0/0
-        rule_desc: "Allow HTTP traffic"
+        rule_desc: "Allow SSH"
       - proto: tcp
-        from_port: 443
-        to_port: 443
+        ports: 80
         cidr_ip: 0.0.0.0/0
-        rule_desc: "Allow HTTPS traffic"
+        rule_desc: "Allow HTTP"
       - proto: tcp
-        from_port: 10250
-        to_port: 10250
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "Kubelet API"
+        ports: 443
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "Allow HTTPS"
+      - proto: tcp
+        from_port: 6781
+        to_port: 6784
+        cidr_ip: 10.0.0.0/16 # change to your own subnet CIDR
+        rule_desc: "weave-net metrics, control and data"
+      - proto: udp
+        from_port: 6783
+        to_port: 6784
+        cidr_ip: 10.0.0.0/16 # change to your own subnet CIDR
+        rule_desc: "Weave CNI"
+      - proto: tcp
+        ports: 10250
+        cidr_ip: 10.0.0.0/16 # change to your own subnet CIDR
+        rule_desc: "kubelet"
     tags:
-      Name: kube-common
+      Name: kubeadm_common_sg
       Cluster: "{{ cluster_name }}"
-  - name: kube-master
-    description: "Kubernetes cluster master SG"
+
+  - name: kubeadm_master_sg
+    description: "kubeadm master SG"
     rules:
       - proto: tcp
         from_port: 2379
-        to_port: 2379
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "etcd server client API"
-      - proto: tcp
-        from_port: 2380
         to_port: 2380
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "etcd server to server communication"
+        group_name: kubeadm_master_sg
+        rule_desc: "etcd"
       - proto: tcp
-        from_port: 6443
-        to_port: 6443
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "Kube-api-server client API"
+        ports: 6443
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "kube-api-server"
       - proto: tcp
-        from_port: 10257
-        to_port: 10257
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "Kube-controller-manager client API"
+        ports: 10257
+        group_name: kubeadm_master_sg
+        rule_desc: "kube-controller-manager"
       - proto: tcp
-        from_port: 10259
-        to_port: 10259
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "Kube-scheduler client API"
+        ports: 10259
+        group_name: kubeadm_master_sg
+        rule_desc: "kube-scheduler"
     tags:
-      Name: kube-master
+      Name: kubeadm_master_sg
       Cluster: "{{ cluster_name }}"
-  - name: kube-worker
-    description: "Kubernetes cluster worker SG"
+      
+  - name: kubeadm_worker_sg
+    description: "kubeadm worker SG"
     rules:
       - proto: tcp
-        from_port: 6783
-        to_port: 6783
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "network plugin port"
-      - proto: udp
-        from_port: 6783
-        to_port: 6783
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "network plugin port"
+        ports: 10255
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "metrics-server"
       - proto: tcp
-        from_port: 6784
-        to_port: 6784
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "network plugin port"
-      - proto: tcp
-        from_port: 10256
-        to_port: 10256
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "Kube-proxy API"
+        ports: 10256
+        group_name: kubeadm_worker_sg
+        rule_desc: "kube-proxy"
       - proto: tcp
         from_port: 30000
         to_port: 32767
-        cidr_ip: 10.0.0.0/16
-        rule_desc: "NodePort Services"
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "NodePort services"
     tags:
-      Name: kube-worker
+      Name: kubeadm_worker_sg
       Cluster: "{{ cluster_name }}"

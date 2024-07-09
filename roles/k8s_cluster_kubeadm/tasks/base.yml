@@ -1,34 +1,46 @@
-- name: Common tasks for cluster nodes
+- name: install common packages, update hosts file and turn off swap
   become: true
   block:
+    - name: dnf update
+      dnf:
+        name: '*'
+        state: latest
+        update_cache: yes
+    
     - name: install common packages
-      yum:
+      dnf:
         name: "{{ item }}"
         state: present
+        allowerasing: true
       loop: "{{ common_packages }}"
-    
-    - name: Check if net.ipv4.ip_forward is enabled
-      ansible.builtin.sysctl:
-        name: net.ipv4.ip_forward
-        value: '1'
-        state: present
-      register: ipv4_forward_status
-    
-    - name: Enable net.ipv4.ip_forward
-      ansible.builtin.lineinfile:
-        path: /etc/sysctl.d/k8s.conf
-        line: net.ipv4.ip_forward = 1
-        create: yes
-      when: ipv4_forward_status.changed
 
-    - name: Reload sysctl settings
-      shell: sudo sysctl --system
-      when: ipv4_forward_status.changed
+    - name: Collect IP information
+      vars:
+        cluster: "tag_Cluster_{{ cluster_name }}"
+      ansible.builtin.set_fact:
+        host_ips: "{{ groups[cluster] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | zip(groups[cluster]) | list }}"
+      run_once: true
+
+    - name: Add IP entries to /etc/hosts
+      vars:
+        ip: "{{ '127.0.0.1' if item[1] == ansible_hostname else item[0] }}"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ ip }} {{ item[1] }}"
+        state: present
+      loop: "{{ host_ips }}"
+      become: true
+
+    - name: turn off swap
+      shell: swapoff -a
+
+- include_tasks: common/sysctl.yml
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
     
 - include_tasks: common/containerd.yml
-
-- include_tasks: common/runc.yml
-
-- include_tasks: common/cni.yml
+  when: "'containerd.service' not in services"
 
 - include_tasks: common/components.yml
+  when: "'kubelet.service' not in services"
