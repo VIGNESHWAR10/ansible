@@ -1,0 +1,41 @@
+- name: Kubeadm Init
+  become: true
+  block:
+    - name: Pull kubeadm docker images
+      shell: kubeadm config images pull
+
+    - name: Initialize kubeadm
+      shell: |
+        kubeadm init --apiserver-advertise-address $(hostname -I) --apiserver-cert-extra-sans $(hostname) \
+          --pod-network-cidr 10.244.0.0/16
+      register: kubeadm_init_output
+    
+    - name: print kubeadm_init output
+      debug:
+        var: kubeadm_init_output.stdout_lines
+    
+    - name: Ensure /root/.kube directory exists
+      file:
+        path: ~/.kube
+        state: directory
+        mode: '0755'
+        owner: root
+        group: root
+
+    - name: copy kubeconfig
+      shell: cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+    
+    - name: Set permissions to kubeconfig
+      shell: sudo chown $(id -u):$(id -g) $HOME/.kube/config
+
+    - name: install weave CNI
+      ansible.builtin.shell: kubectl apply -f https://reweave.azurewebsites.net/k8s/{{ kubernetes_version }}/net.yaml
+    
+    - name: Deploy metrics-server
+      shell: |
+        kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+    
+    - name: Modify metrics-server deployment to run insecurely
+      shell: |
+        kubectl patch deployment metrics-server -n kube-system --type='json' \
+          -p='[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'

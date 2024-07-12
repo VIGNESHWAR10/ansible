@@ -1,0 +1,46 @@
+- name: install common packages, update hosts file and turn off swap
+  become: true
+  block:
+    - name: dnf update
+      dnf:
+        name: '*'
+        state: latest
+        update_cache: yes
+    
+    - name: install common packages
+      dnf:
+        name: "{{ item }}"
+        state: present
+        allowerasing: true
+      loop: "{{ common_packages }}"
+
+    - name: Collect IP information
+      vars:
+        cluster: "tag_Cluster_{{ cluster_name }}"
+      ansible.builtin.set_fact:
+        host_ips: "{{ groups[cluster] | map('extract', hostvars, ['ansible_default_ipv4', 'address']) | zip(groups[cluster]) | list }}"
+      run_once: true
+
+    - name: Add IP entries to /etc/hosts
+      vars:
+        ip: "{{ '127.0.0.1' if item[1] == ansible_hostname else item[0] }}"
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        line: "{{ ip }} {{ item[1] }}"
+        state: present
+      loop: "{{ host_ips }}"
+      become: true
+
+    - name: turn off swap
+      shell: swapoff -a
+
+- include_tasks: common/sysctl.yml
+
+- name: Gather service facts
+  ansible.builtin.service_facts:
+    
+- include_tasks: common/containerd.yml
+  when: "'containerd.service' not in services"
+
+- include_tasks: common/components.yml
+  when: "'kubelet.service' not in services"

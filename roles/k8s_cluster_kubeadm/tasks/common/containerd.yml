@@ -1,0 +1,27 @@
+- name: setup containerd
+  become: true
+  block:
+    - name: Add Docker repository
+      command: sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+
+    - name: Install containerd
+      ansible.builtin.yum:
+        name: containerd.io
+        state: present
+
+    - name: Add containerd config file (/etc.containerd/config.toml)
+      copy:
+        src: "files/config.toml"
+        dest: "/etc/containerd/config.toml"
+        owner: root
+        group: root
+        mode: 0644
+    
+    - name: Enable and Start containerd
+      systemd:
+        name: containerd
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+      

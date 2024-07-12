@@ -1,0 +1,44 @@
+- name: Install kubeadm, kubectl & kubelet
+  become: true
+  block:
+    - name: set SELinux to permissive mode
+      selinux:
+        policy: targeted
+        state: permissive
+      when: ansible_selinux.status == 'enabled'
+    
+    - name: Modify selinux config
+      command: sudo sed -i 's/^SELINUX=enforcing$/SELINUX=permissive/' /etc/selinux/config
+      when: ansible_selinux.status == 'enabled'
+      
+    - name: Add crictl.yaml config file
+      copy:
+        src: files/crictl.yaml
+        dest: /etc/crictl.yaml
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: Add Kubernetes repository
+      template:
+        src: templates/kubernetes.repo.j2
+        dest: /etc/yum.repos.d/kubernetes.repo
+        owner: root
+        group: root
+        mode: '0644'
+    
+    - name: install kubeadm, kubectl & kubelet
+      yum:
+        name: "{{ item }}"
+        state: present
+        disable_excludes: kubernetes
+      loop: "{{ components }}"
+    
+    - name: version lock components
+      shell: yum versionlock {{ item }}
+      loop: "{{ components }}"
+    
+    - name: Enable kubelet service
+      systemd:
+        name: kubelet
+        enabled: yes

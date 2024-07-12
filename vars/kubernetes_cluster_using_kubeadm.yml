@@ -1,0 +1,108 @@
+---
+# vars file for launch_Kubernetes_cluster
+
+kubernetes_version: "v1.29"
+
+# cluster infrastructure details
+
+# role value is set to `master` for master_nodes and `worker` for worker_nodes (cannot be changed)
+# as the logic in the role is based on those values
+
+cluster_name: "kubernetes"
+master:
+  node_count: 1 # do not change this value
+  name_prefix: "master-"
+worker:
+  node_count: 2
+  name_prefix: "worker-"
+
+# base EC2 instance details
+keypair: my-docker-practice-key # your AWS key pair
+instance_type: t3.medium # change to your desired instance type
+count: 1
+image: ami-022ce6f32988af5fa # Amazon RHEL 9
+region: ap-south-1
+vpc_id: vpc-0b3591847763615ba # your VPC ID
+subnet_ids: 
+  - subnet-0f3a61901710ca80b # your subnet ID1 
+  - subnet-0c36ce8777d049a8c # your subnet ID2
+
+# Security Group details
+# Reference URL: https://kubernetes.io/docs/reference/networking/ports-and-protocols/
+security_groups:
+  - name: kubeadm_common_sg
+    description: "kubeadm common cluster SG"
+    rules:
+      - proto: tcp
+        ports: 22
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "Allow SSH"
+      - proto: tcp
+        ports: 80
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "Allow HTTP"
+      - proto: tcp
+        ports: 443
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "Allow HTTPS"
+      - proto: tcp
+        from_port: 6781
+        to_port: 6784
+        cidr_ip: 10.0.0.0/16 # change to your own subnet CIDR
+        rule_desc: "weave-net metrics, control and data"
+      - proto: udp
+        from_port: 6783
+        to_port: 6784
+        cidr_ip: 10.0.0.0/16 # change to your own subnet CIDR
+        rule_desc: "Weave CNI"
+      - proto: tcp
+        ports: 10250
+        cidr_ip: 10.0.0.0/16 # change to your own subnet CIDR
+        rule_desc: "kubelet"
+    tags:
+      Name: kubeadm_common_sg
+      Cluster: "{{ cluster_name }}"
+
+  - name: kubeadm_master_sg
+    description: "kubeadm master SG"
+    rules:
+      - proto: tcp
+        from_port: 2379
+        to_port: 2380
+        group_name: kubeadm_master_sg
+        rule_desc: "etcd"
+      - proto: tcp
+        ports: 6443
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "kube-api-server"
+      - proto: tcp
+        ports: 10257
+        group_name: kubeadm_master_sg
+        rule_desc: "kube-controller-manager"
+      - proto: tcp
+        ports: 10259
+        group_name: kubeadm_master_sg
+        rule_desc: "kube-scheduler"
+    tags:
+      Name: kubeadm_master_sg
+      Cluster: "{{ cluster_name }}"
+      
+  - name: kubeadm_worker_sg
+    description: "kubeadm worker SG"
+    rules:
+      - proto: tcp
+        ports: 10255
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "metrics-server"
+      - proto: tcp
+        ports: 10256
+        group_name: kubeadm_worker_sg
+        rule_desc: "kube-proxy"
+      - proto: tcp
+        from_port: 30000
+        to_port: 32767
+        cidr_ip: 0.0.0.0/0
+        rule_desc: "NodePort services"
+    tags:
+      Name: kubeadm_worker_sg
+      Cluster: "{{ cluster_name }}"

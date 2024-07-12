@@ -39,9 +39,10 @@
   ignore_errors: true
 
 - name: Wait for new instances SSH to be ready
+  become_user: ec2-user
   ansible.builtin.wait_for:
     timeout: 60
-    host: "{{ item.instances.0.public_ip_address }}"
+    host: "{{ item.instances[1].public_ip_address if item.instances[1].public_ip_address is defined else item.instances[0].public_ip_address }}"
     port: 22
     delay: 40  # Wait 40 seconds before starting the check
   loop: "{{ newly_created_instances.results }}"

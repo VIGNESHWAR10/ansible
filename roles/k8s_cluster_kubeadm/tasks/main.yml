@@ -1,0 +1,18 @@
+---
+# tasks file for roles/k8s_cluster_kubeadm
+
+- include_tasks: base.yml
+
+- name: Check kubeadm initialization status
+  stat: 
+    path: /etc/kubernetes/admin.conf
+  register: kubeadm_init_status
+  ignore_errors: true
+  when: "'tag_Role_master' in group_names"
+
+- include_tasks: master.yml
+  when: 
+    - "'tag_Role_master' in group_names"
+    - "not kubeadm_init_status.stat.exists"
+
+- include_tasks: worker.yml

@@ -2,7 +2,7 @@
 # vars file for launch_Kubernetes_cluster
 keypair: my-docker-practice-key
 instance_type: t2.micro
-image: ami-0cc9838aa7ab1dce7
+image: ami-04f8d7ed2f1a54b14
 count: 1
 region: ap-south-1
 vpc_id: vpc-0b3591847763615ba

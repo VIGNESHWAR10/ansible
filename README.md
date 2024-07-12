@@ -42,9 +42,13 @@ ansible-playbook playbooks/launch_ec2.yml
   * [Check Role](roles/setup_falcon/README.md) 
   * [Check Playbook](playbooks/setup_falcon.yml)
 
-* <b>launch_k8s_cluster</b> - Used to setup Kubernetes cluster manually using EC2 instances 
+* <b>launch_k8s_cluster</b> - Used to setup Kubernetes cluster manually using EC2 instances (HA supported)
   * [Check Role](roles/launch_k8s_cluster/README.md) 
   * [Check Playbook](playbooks/launch_k8s_cluster.yml)
+
+* <b>k8s_cluster_kubeadm</b> - Used to setup kubernetes cluster using kubeadm
+  * [Check Role](roles/k8s_cluster_kubeadm/README.md)
+  * [Check Playbook](playbooks/launch_k8s-cluster_kubeadm.yml)
 
 ## Contact
 
