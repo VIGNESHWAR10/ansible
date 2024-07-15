@@ -1,0 +1,44 @@
+- name: upgrade master-01
+  become: true
+  block:
+    - name: kubeadm upgrade plan
+      shell: kubeadm upgrade plan
+      register: kubeadm_upgrade_plan
+    
+    - name: Extract kubeadm upgrade apply command
+      set_fact:
+        upgrade_command: "{{ kubeadm_upgrade_plan.stdout | regex_search('kubeadm upgrade apply v\\d+\\.\\d+\\.\\d+') }}"
+
+    - name: run kubeadm upgrade apply
+      shell: "{{ upgrade_command }} --yes"
+    
+    - name: Upgrade Weavenet CNI
+      shell: kubectl apply -f https://reweave.azurewebsites.net/k8s/{{ kubernetes_new_version }}/net.yaml
+    
+    - name: drain master-01 node
+      shell: kubectl drain master-01 --ignore-daemonsets
+    
+    - name: cordon master-01 node
+      shell: kubectl cordon master-01
+    
+    - name: upgrade kubectl, kubelet
+      yum:
+        name: "{{ item }}"
+        state: latest
+        disable_excludes: kubernetes
+      loop:
+        - kubectl-{{ kubeadm_new_version.stdout }}
+        - kubelet-{{ kubeadm_new_version.stdout }}
+    
+    - name: version lock kubectl, kubelet
+      command: |
+        yum versionlock add kubectl kubelet
+    
+    - name: restart kubelet
+      service:
+        name: kubelet
+        state: restarted
+        daemon_reload: yes
+    
+    - name: uncordon master-01 node
+      shell: kubectl uncordon master-01

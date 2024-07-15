@@ -1,0 +1,28 @@
+---
+- name: Upgrade kubeadm
+  become: true
+  block:
+    - name: replace yum repo with new version
+      shell: |
+        sed -i 's/{{ kubernetes_existing_version }}/{{ kubernetes_new_version }}/g' /etc/yum.repos.d/kubernetes.repo
+
+    - name: set complete kubernetes version
+      shell: |
+        yum list --showduplicates kubeadm \
+         --disableexcludes=kubernetes | grep 1.30 | grep x86_64 | tail -n 1 | awk '{print $2}'
+      register: kubeadm_new_version
+    
+    - name: remove kubeadm, kubectl and kubelet version lock
+      command: |
+        yum versionlock delete kubeadm kubectl kubelet
+      ignore_errors: true
+    
+    - name: install kubeadm
+      yum:
+        name: kubeadm-{{ kubeadm_new_version.stdout }}
+        state: present
+        disable_excludes: kubernetes
+    
+    - name: lock kubeadm version
+      command: |
+        yum versionlock add kubeadm

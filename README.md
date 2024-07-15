@@ -50,6 +50,10 @@ ansible-playbook playbooks/launch_ec2.yml
   * [Check Role](roles/k8s_cluster_kubeadm/README.md)
   * [Check Playbook](playbooks/launch_k8s-cluster_kubeadm.yml)
 
+* <b>upgrade_kubeadm_cluster</b> - Upgrade kubernetes cluster using kubeadm
+ * [Check Role](roles/upgrade_kubeadm_cluster/README.md)
+ * [Check Playbook](playbooks/upgrade_k8s-cluster_kubeadm.yml)
+
 ## Contact
 
 #### Vigneshwar Mahendran 

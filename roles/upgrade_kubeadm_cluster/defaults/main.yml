@@ -1,0 +1,6 @@
+---
+# defaults file for roles/upgrade_kubeadm_cluster
+
+cluster_name: "kubernetes"
+
+kubernetes_existing_version: "v1.29"
