@@ -1,0 +1,10 @@
+--- # role to upgrade kubeadm cluster
+
+- name: Upgrade Kubernetes Cluster using kubeadm
+  hosts: tag_Cluster_{{ cluster_name }}
+  gather_facts: true
+  vars_files:
+    - ../vars/upgrade_kubernetes_cluster_using_kubeadm.yml
+  roles:
+    - role: roles/upgrade_kubeadm_cluster
+  tags: [kubernetes]

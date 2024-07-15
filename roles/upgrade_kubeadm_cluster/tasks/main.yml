@@ -1,0 +1,40 @@
+---
+# tasks file for roles/upgrade_kubeadm_cluster
+- name: check version match
+  become: true
+  block:
+    - name: get current kubeadm major version from cluster
+      shell: kubectl version --client -o json | jq -r .clientVersion.major
+      register: kubectl_current_major_version
+    
+    - name: get current kubeadm minor version from cluster
+      shell: kubectl version --client -o json | jq -r .clientVersion.minor
+      register: kubectl_current_minor_version
+    
+    - name: Modify variables to compare versions
+      set_fact:
+        old_minor_version: "{{ kubernetes_existing_version.split('.')[1] }}"
+        old_major_version: "{{ kubernetes_existing_version.split('.')[0] | regex_replace('^v', '') }}"
+        current_major_version: "{{ kubectl_current_major_version.stdout}}"
+        current_minor_version: "{{ kubectl_current_minor_version.stdout}}"
+    
+    - name: Compare versions
+      assert:
+        that:
+          - current_major_version == old_major_version
+          - current_minor_version == old_minor_version
+        fail_msg: "Version mismatch"
+        success_msg: "Version values match. Proceeding with the upgrade"
+  run_once: true
+
+- name: Set the new version
+  set_fact:
+    kubernetes_new_version: "v{{ current_major_version }}.{{ current_minor_version | int + 1 }}"
+
+- include_tasks: common.yml
+
+- include_tasks: master.yml
+  when: "'tag_Role_master' in group_names"
+
+- include_tasks: worker.yml
+

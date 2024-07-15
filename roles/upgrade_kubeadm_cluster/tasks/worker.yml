@@ -1,0 +1,50 @@
+- name: upgrade worker nodes
+  become: true
+  block:
+    - name: wait for kube-apiserver to be available
+      wait_for:
+        host: "{{ groups['tag_Role_master'][0] }}"
+        port: 6443
+        delay: 10
+        timeout: 300
+        state: started
+  
+    - name: kubeadm upgrade node
+      shell: kubeadm upgrade node
+      when: "'tag_Role_worker' in group_names"
+    
+    - name: drain worker nodes
+      shell: |
+        kubectl drain $(kubectl get nodes | grep worker | awk '{print $1}' | paste -sd ' ') --ignore-daemonsets \
+          --force --delete-emptydir-data
+      when: "'tag_Role_master' in group_names"
+    
+    - name: cordon worker nodes
+      shell: kubectl cordon $(kubectl get nodes | grep worker | awk '{print $1}' | paste -sd ' ')
+      when: "'tag_Role_master' in group_names"
+    
+    - name: upgrade kubectl, kubelet
+      yum:
+        name: "{{ item }}"
+        state: latest
+        disable_excludes: kubernetes
+      loop:
+        - kubectl-{{ kubeadm_new_version.stdout }}
+        - kubelet-{{ kubeadm_new_version.stdout }}
+      when: "'tag_Role_worker' in group_names"
+    
+    - name: version lock kubectl, kubelet
+      command: |
+        yum versionlock add kubectl kubelet
+      when: "'tag_Role_worker' in group_names"
+    
+    - name: restart kubelet
+      service:
+        name: kubelet
+        state: restarted
+        daemon_reload: yes
+      when: "'tag_Role_worker' in group_names"
+    
+    - name: uncordon worker nodes
+      shell: kubectl uncordon $(kubectl get nodes | grep worker | awk '{print $1}' | paste -sd ' ')
+      when: "'tag_Role_master' in group_names"
